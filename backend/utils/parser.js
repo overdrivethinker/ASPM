@@ -73,7 +73,7 @@ function normalizeValue(value) {
 function parseSpecification(spec) {
 	if (!spec) return {};
 
-	const parts = spec.split(/[,;]/).map((p) => p.trim());
+	const parts = spec.split(/[,;.]/).map((p) => p.trim());
 
 	let value = null;
 
@@ -90,7 +90,9 @@ function parseSpecification(spec) {
 		}
 	}
 
-	let tolPart = parts.find((p) => /[%]|OHM|PF|NF|UF/i.test(p) && /[+-]/.test(p));
+	let tolPart = parts.find(
+		(p) => /[%]|OHM|PF|NF|UF/i.test(p) && /[+-]/.test(p),
+	);
 
 	if (!tolPart) {
 		tolPart = parts.find((p) => /^\s*(\d+(\.\d+)?)\s*%\s*$/.test(p));
@@ -129,7 +131,9 @@ function processSheet(
 			const spec = r[COL_SPEC]?.toString().trim();
 			const parsedSpec = parseSpecification(spec);
 			return {
-				part_code: r[COL_PART_CODE]?.toString().trim().replace(/-/g, ""),
+				part_code: r[COL_PART_CODE]?.toString()
+					.trim()
+					.replace(/-/g, ""),
 				part_name: r[COL_PART_NAME]?.toString().trim(),
 				supplier: r[COL_SUPPLIER]?.toString().trim(),
 				specification: spec,
