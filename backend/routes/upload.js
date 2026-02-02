@@ -53,10 +53,18 @@ router.post("/partlib", upload.single("file"), async (req, res) => {
 					continue;
 				}
 
+				let componentSize = row.component_size;
+				if (componentSize) {
+					componentSize = String(componentSize);
+					if (/^\d{3,4}$/.test(componentSize)) {
+						componentSize = componentSize.padStart(4, "0");
+					}
+				}
+
 				await trx("dbo.part_library").insert({
 					part_name: row.part_name,
 					component_type: row.component_type,
-					component_size: row.component_size,
+					component_size: componentSize,
 					reel_width: row.reel_width,
 				});
 
