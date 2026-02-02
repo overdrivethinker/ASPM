@@ -158,23 +158,26 @@ async function handleCheck(req, res) {
 		});
 	}
 
-	if (!leftPart.value || !rightPart.value) {
-		if (!leftPart.value && !rightPart.value) {
+	const leftInvalid = !leftPart.value || !leftPart.tolerance;
+	const rightInvalid = !rightPart.value || !rightPart.tolerance;
+
+	if (leftInvalid || rightInvalid) {
+		if (leftInvalid && rightInvalid) {
 			return res.json({
 				code: 0,
-				message: `\nVALUE NOT FOUND FOR CAP/RES PART\nL:${LEFTID} | R:${RIGHTID}`,
+				message: `\nVALUE / TOLERANCE NOT FOUND FOR CAP/RES PART\nL:${LEFTID} | R:${RIGHTID}`,
 				data: "",
 			});
-		} else if (!leftPart.value) {
+		} else if (leftInvalid) {
 			return res.json({
 				code: 0,
-				message: `\nVALUE NOT FOUND FOR CAP/RES PART\nL:${LEFTID}`,
+				message: `\nVALUE / TOLERANCE NOT FOUND FOR CAP/RES PART\nL:${LEFTID}`,
 				data: "",
 			});
 		} else {
 			return res.json({
 				code: 0,
-				message: `\nVALUE NOT FOUND FOR CAP/RES PART\nR:${RIGHTID}`,
+				message: `\nVALUE / TOLERANCE NOT FOUND FOR CAP/RES PART\nR:${RIGHTID}`,
 				data: "",
 			});
 		}
