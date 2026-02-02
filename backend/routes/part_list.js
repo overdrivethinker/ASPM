@@ -15,12 +15,10 @@ router.get("/", async (req, res) => {
 				"part_id",
 				"part_number",
 				"part_name",
-				"supplier",
 				"specification",
 				"value",
 				"tolerance",
-				"reference_file",
-				"created_date",
+				"updated_date",
 			)
 			.orderBy("part_name", "asc");
 
@@ -68,15 +66,8 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
 	try {
-		const {
-			part_number,
-			part_name,
-			supplier,
-			specification,
-			value,
-			tolerance,
-			reference_file,
-		} = req.body;
+		const { part_number, part_name, specification, value, tolerance } =
+			req.body;
 
 		if (!part_number || !part_number.trim()) {
 			return res.status(400).json({ error: "Part number is required" });
@@ -99,11 +90,9 @@ router.post("/", async (req, res) => {
 		const [part_id] = await knex("part_list").insert({
 			part_number: part_number.trim(),
 			part_name: part_name.trim(),
-			supplier: supplier?.trim() || null,
 			specification: specification?.trim() || null,
 			value: value?.trim() || null,
 			tolerance: tolerance?.trim() || null,
-			reference_file: reference_file?.trim() || null,
 		});
 
 		res.status(201).json({
@@ -112,11 +101,9 @@ router.post("/", async (req, res) => {
 				part_id,
 				part_number: part_number.trim(),
 				part_name: part_name.trim(),
-				supplier: supplier?.trim() || null,
 				specification: specification?.trim() || null,
 				value: value?.trim() || null,
 				tolerance: tolerance?.trim() || null,
-				reference_file: reference_file?.trim() || null,
 			},
 		});
 	} catch (err) {
@@ -135,14 +122,7 @@ router.post("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
 	try {
 		const { id } = req.params;
-		const {
-			part_name,
-			supplier,
-			specification,
-			value,
-			tolerance,
-			reference_file,
-		} = req.body;
+		const { part_name, specification, value, tolerance } = req.body;
 
 		const existingPart = await knex("part_list")
 			.where("part_id", id)
@@ -156,11 +136,9 @@ router.put("/:id", async (req, res) => {
 			.where("part_id", id)
 			.update({
 				part_name: part_name?.trim() || existingPart.part_name,
-				supplier: supplier?.trim() || null,
 				specification: specification?.trim() || null,
 				value: value?.trim() || null,
 				tolerance: tolerance?.trim() || null,
-				reference_file: reference_file?.trim() || null,
 			});
 
 		const updatedPart = await knex("part_list")
@@ -206,12 +184,10 @@ router.get("/export", async (req, res) => {
 		.select(
 			"part_number",
 			"part_name",
-			"supplier",
 			"specification",
 			"value",
 			"tolerance",
-			"reference_file",
-			"created_date",
+			"updated_date",
 		)
 		.orderBy("part_name", "asc");
 

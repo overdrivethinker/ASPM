@@ -85,33 +85,25 @@ router.post("/partlist", upload.single("file"), async (req, res) => {
 			return res.status(400).json({ message: "NO FILE UPLOADED" });
 		}
 
-		const COL_PART_CODE = 3;
-		const COL_PART_NAME = 5;
-		const COL_SUPPLIER = 6;
-		const START_ROW = 7;
+		const COL_ITMCD = 0;
+		const COL_PRDNO = 1;
+		const COL_SPECS = 2;
+		const START_ROW = 1;
 
 		const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
 
-		const allData = [];
-		const maxSheetIndex = Math.min(workbook.SheetNames.length, 3);
+		const firstSheetName = workbook.SheetNames[0];
+		const firstSheet = workbook.Sheets[firstSheetName];
 
-		for (let i = 1; i < maxSheetIndex; i++) {
-			const sheetName = workbook.SheetNames[i];
-			const sheet = workbook.Sheets[sheetName];
+		const sheetData = processSheet(
+			firstSheet,
+			COL_ITMCD,
+			COL_PRDNO,
+			COL_SPECS,
+			START_ROW,
+		);
 
-			const sheetData = processSheet(
-				sheet,
-				COL_PART_CODE,
-				COL_PART_NAME,
-				COL_SUPPLIER,
-				START_ROW,
-				i,
-			);
-
-			allData.push(...sheetData);
-		}
-
-		const uniqueData = removeDuplicates(allData);
+		const uniqueData = removeDuplicates(sheetData);
 
 		if (!uniqueData.length) {
 			return res.status(400).json({ message: "[XLSX] FILE IS EMPTY" });
@@ -136,11 +128,9 @@ router.post("/partlist", upload.single("file"), async (req, res) => {
 				await trx("dbo.part_list").insert({
 					part_number: row.part_code,
 					part_name: row.part_name,
-					supplier: row.supplier,
 					specification: row.specification,
 					value: row.value,
 					tolerance: row.tolerance,
-					reference_file: req.file.originalname,
 				});
 
 				inserted++;
@@ -150,11 +140,11 @@ router.post("/partlist", upload.single("file"), async (req, res) => {
 		res.json({
 			status: "OK",
 			file: req.file.originalname,
-			sheets_processed: maxSheetIndex - 1,
+			sheets_processed: 1,
 			inserted,
 			skipped,
 			total_unique: uniqueData.length,
-			total_with_duplicates: allData.length,
+			total_with_duplicates: sheetData.length,
 		});
 	} catch (err) {
 		res.status(500).json({

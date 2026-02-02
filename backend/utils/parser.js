@@ -1,10 +1,5 @@
 const xlsx = require("xlsx");
 
-const SHEET_CONFIG = {
-	1: { COL_SPEC: 10 },
-	2: { COL_SPEC: 9 },
-};
-
 function parseTolerance(str) {
 	if (!str) return null;
 
@@ -73,10 +68,11 @@ function normalizeValue(value) {
 function parseSpecification(spec) {
 	if (!spec) return {};
 
-	const parts = spec.split(/[,;.]/).map((p) => p.trim());
+	const parts = spec.split(/[,;]/).map((p) => p.trim());
 
 	let value = null;
 
+	// Cari value dengan component unit
 	for (const part of parts) {
 		const hasComponentUnit =
 			/(\d+(\.\d+)?)\s*(PF|NF|UF|MF|F|OHM|KOHM|MOHM|H|MH|UH)/i.test(part);
@@ -90,6 +86,7 @@ function parseSpecification(spec) {
 		}
 	}
 
+	// Cari tolerance part
 	let tolPart = parts.find(
 		(p) => /[%]|OHM|PF|NF|UF/i.test(p) && /[+-]/.test(p),
 	);
@@ -106,19 +103,7 @@ function parseSpecification(spec) {
 	};
 }
 
-function processSheet(
-	sheet,
-	COL_PART_CODE,
-	COL_PART_NAME,
-	COL_SUPPLIER,
-	START_ROW,
-	sheetIndex = null,
-) {
-	let COL_SPEC = 10;
-	if (sheetIndex !== null && SHEET_CONFIG[sheetIndex]) {
-		COL_SPEC = SHEET_CONFIG[sheetIndex].COL_SPEC;
-	}
-
+function processSheet(sheet, COL_ITMCD, COL_PRDNO, COL_SPECS, START_ROW) {
 	const rows = xlsx.utils.sheet_to_json(sheet, {
 		header: 1,
 		range: START_ROW,
@@ -126,16 +111,14 @@ function processSheet(
 	});
 
 	return rows
-		.filter((r) => r[COL_PART_CODE])
+		.filter((r) => r[COL_ITMCD]) // Filter rows yang punya ITMCD
 		.map((r) => {
-			const spec = r[COL_SPEC]?.toString().trim();
+			const spec = r[COL_SPECS]?.toString().trim();
 			const parsedSpec = parseSpecification(spec);
 			return {
-				part_code: r[COL_PART_CODE]?.toString()
-					.trim()
-					.replace(/-/g, ""),
-				part_name: r[COL_PART_NAME]?.toString().trim(),
-				supplier: r[COL_SUPPLIER]?.toString().trim(),
+				part_code: r[COL_ITMCD]?.toString().trim().replace(/-/g, ""), // Remove dash dari part code
+				part_name: r[COL_PRDNO]?.toString().trim(),
+				supplier: null, // Tidak ada supplier di format ini
 				specification: spec,
 				value: parsedSpec.value,
 				tolerance: parsedSpec.tolerance,
@@ -159,8 +142,8 @@ function removeDuplicates(data) {
 
 module.exports = {
 	parseTolerance,
+	normalizeValue,
 	parseSpecification,
 	processSheet,
 	removeDuplicates,
-	SHEET_CONFIG,
 };
