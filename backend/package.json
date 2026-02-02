@@ -1,0 +1,30 @@
+{
+	"name": "backend",
+	"version": "1.0.0",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"start": "node app.js",
+		"dev": "nodemon app.js",
+		"migrate": "knex migrate:latest --knexfile database/knex_config.js",
+		"rollback": "knex migrate:rollback --knexfile database/knex_config.js",
+		"seed": "knex seed:run --knexfile database/knex_config.js"
+	},
+	"author": "",
+	"license": "ISC",
+	"description": "",
+	"dependencies": {
+		"bcryptjs": "^3.0.3",
+		"cors": "^2.8.6",
+		"dayjs": "^1.11.19",
+		"dotenv": "^17.2.3",
+		"express": "^5.2.1",
+		"knex": "^3.1.0",
+		"mssql": "^12.2.0",
+		"multer": "^2.0.2",
+		"xlsx": "^0.18.5"
+	},
+	"devDependencies": {
+		"nodemon": "^3.1.11"
+	}
+}
