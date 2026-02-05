@@ -1,5 +1,3 @@
-const xlsx = require("xlsx");
-
 function parseTolerance(str) {
 	if (!str) return null;
 
@@ -101,29 +99,6 @@ function parseSpecification(spec) {
 	};
 }
 
-function processSheet(sheet, COL_ITMCD, COL_PRDNO, COL_SPECS, START_ROW) {
-	const rows = xlsx.utils.sheet_to_json(sheet, {
-		header: 1,
-		range: START_ROW,
-		defval: null,
-	});
-
-	return rows
-		.filter((r) => r[COL_ITMCD])
-		.map((r) => {
-			const spec = r[COL_SPECS]?.toString().trim();
-			const parsedSpec = parseSpecification(spec);
-			return {
-				part_code: r[COL_ITMCD]?.toString().trim().replace(/-/g, ""),
-				part_name: r[COL_PRDNO]?.toString().trim(),
-				supplier: null,
-				specification: spec,
-				value: parsedSpec.value,
-				tolerance: parsedSpec.tolerance,
-			};
-		});
-}
-
 function removeDuplicates(data) {
 	const uniqueData = [];
 	const seenPartCodes = new Set();
@@ -142,6 +117,5 @@ module.exports = {
 	parseTolerance,
 	normalizeValue,
 	parseSpecification,
-	processSheet,
 	removeDuplicates,
 };
