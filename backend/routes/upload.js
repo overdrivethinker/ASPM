@@ -42,7 +42,24 @@ router.post("/partlib", upload.single("file"), async (req, res) => {
 
 		await knex.transaction(async (trx) => {
 			for (const row of rows) {
-				if (!row.part_name) continue;
+				if (
+					!row.part_name ||
+					!row.component_type ||
+					!row.component_size ||
+					!row.reel_width
+				) {
+					skipped++;
+					continue;
+				}
+
+				const partListExists = await trx("dbo.part_list")
+					.where("part_name", String(row.part_name))
+					.first();
+
+				if (!partListExists) {
+					skipped++;
+					continue;
+				}
 
 				const exists = await trx("dbo.part_library")
 					.where("part_name", String(row.part_name))
@@ -53,12 +70,9 @@ router.post("/partlib", upload.single("file"), async (req, res) => {
 					continue;
 				}
 
-				let componentSize = row.component_size;
-				if (componentSize) {
-					componentSize = String(componentSize);
-					if (/^\d{3,4}$/.test(componentSize)) {
-						componentSize = componentSize.padStart(4, "0");
-					}
+				let componentSize = String(row.component_size);
+				if (/^\d{3,4}$/.test(componentSize)) {
+					componentSize = componentSize.padStart(4, "0");
 				}
 
 				await trx("dbo.part_library").insert({
