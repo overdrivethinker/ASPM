@@ -88,6 +88,16 @@ async function handleCheck(req, res) {
 			});
 		}
 	}
+	const checkLibraryComplete = (library) => {
+		if (
+			!library.component_type ||
+			!library.component_size ||
+			!library.reel_width
+		) {
+			return false;
+		}
+		return true;
+	};
 
 	const leftLibrary = await knex("dbo.part_library")
 		.select("*")
@@ -121,6 +131,31 @@ async function handleCheck(req, res) {
 		}
 	}
 
+	const leftComplete = checkLibraryComplete(leftLibrary);
+	const rightComplete = checkLibraryComplete(rightLibrary);
+
+	if (!leftComplete || !rightComplete) {
+		if (!leftComplete && !rightComplete) {
+			return res.json({
+				code: 0,
+				message: `\nPARTS LIBRARY INCOMPLETE\nL:${leftPart.part_name} | R:${rightPart.part_name}`,
+				data: "",
+			});
+		} else if (!leftComplete) {
+			return res.json({
+				code: 0,
+				message: `\nPARTS LIBRARY INCOMPLETE\nL:${leftPart.part_name}`,
+				data: "",
+			});
+		} else {
+			return res.json({
+				code: 0,
+				message: `\nPARTS LIBRARY INCOMPLETE\nR:${rightPart.part_name}`,
+				data: "",
+			});
+		}
+	}
+
 	if (leftLibrary.reel_width !== "8" && rightLibrary.reel_width !== "8") {
 		return res.json({
 			code: 2,
@@ -143,12 +178,26 @@ async function handleCheck(req, res) {
 			data: "",
 		});
 	}
+	const leftHasBM = leftPart?.specification?.startsWith("BM");
+	const rightHasBM = rightPart?.specification?.startsWith("BM");
 
-	const validTypes = ["CAP", "RES"];
-	if (
-		!validTypes.includes(leftLibrary.component_type) ||
-		!validTypes.includes(rightLibrary.component_type)
-	) {
+	const hasBodyMarking = !!leftHasBM || !!rightHasBM;
+
+	const isCapRes =
+		["CAP", "RES"].includes(leftLibrary.component_type) &&
+		["CAP", "RES"].includes(rightLibrary.component_type);
+
+	if (hasBodyMarking && isCapRes) {
+		return res.json({
+			code: 1,
+			message: "COMPONENT TYPE WITH BODY MARKING",
+			data: {
+				DESCRIPTION: "",
+			},
+		});
+	}
+
+	if (!hasBodyMarking && !isCapRes) {
 		return res.json({
 			code: 1,
 			message: "COMPONENT TYPE NOT CAP/RES",
