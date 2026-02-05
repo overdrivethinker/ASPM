@@ -36,7 +36,15 @@ router.post("/", async (req, res) => {
 });
 
 async function handleCheck(req, res) {
-	const { LEFTID, LEFTUNIQUEID, RIGHTID, RIGHTUNIQUEID } = req.body;
+	const {
+		LEFTID,
+		LEFTUNIQUEID,
+		RIGHTID,
+		RIGHTUNIQUEID,
+		TIMESTAMP,
+		USERID,
+		DEVICENAME,
+	} = req.body;
 
 	await knex.transaction(async (trx) => {
 		try {
@@ -45,6 +53,10 @@ async function handleCheck(req, res) {
 					action: "check",
 					left_id: LEFTID,
 					right_id: RIGHTID,
+					timestamp: TIMESTAMP,
+					user_id: USERID,
+					machine_sn: MACHINESN,
+					device_name: DEVICENAME,
 				});
 
 				return res.json({
@@ -145,7 +157,6 @@ async function handleCheck(req, res) {
 					req.body,
 					missingType,
 					{ left: leftPart.part_name, right: rightPart.part_name },
-
 					trx,
 				);
 
@@ -185,7 +196,6 @@ async function handleCheck(req, res) {
 					req.body,
 					incompleteType,
 					{ left: leftPart.part_name, right: rightPart.part_name },
-
 					trx,
 				);
 

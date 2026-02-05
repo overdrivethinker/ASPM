@@ -124,6 +124,7 @@ router.get("/activity-logs/export", async (req, res) => {
 				"log.message",
 				"log.error_detail",
 			)
+			.where("log.action", "check")
 			.orderBy("log.timestamp", "desc");
 
 		if (dateRange) {

@@ -1,11 +1,10 @@
 const knex = require("../database/db");
-const { toWIB } = require("../utils/helpers");
 
 class APILogger {
 	static async log(logData, trx = null) {
 		try {
 			const logEntry = {
-				timestamp: toWIB(new Date()),
+				timestamp: logData.timestamp,
 				action: logData.action,
 				user_id: logData.user_id || null,
 				device_name: logData.device_name || null,
@@ -49,6 +48,8 @@ class APILogger {
 	static async logMissingFields(data) {
 		await this.log({
 			action: data.action || "check",
+			user_id: data.user_id,
+			device_name: data.device_name,
 			left_id: data.left_id,
 			right_id: data.right_id,
 			status_code: 0,
@@ -61,6 +62,8 @@ class APILogger {
 		await this.log(
 			{
 				action: "check",
+				user_id: data.USERID,
+				device_name: data.DEVICENAME,
 				left_id: data.LEFTID,
 				left_unique_id: data.LEFTUNIQUEID,
 				right_id: data.RIGHTID,
@@ -77,6 +80,8 @@ class APILogger {
 		await this.log(
 			{
 				action: "check",
+				user_id: data.USERID,
+				device_name: data.DEVICENAME,
 				left_id: data.LEFTID,
 				left_unique_id: data.LEFTUNIQUEID,
 				right_id: data.RIGHTID,
@@ -102,6 +107,8 @@ class APILogger {
 		await this.log(
 			{
 				action: "check",
+				user_id: data.USERID,
+				device_name: data.DEVICENAME,
 				left_id: data.LEFTID,
 				left_unique_id: data.LEFTUNIQUEID,
 				right_id: data.RIGHTID,
@@ -114,13 +121,7 @@ class APILogger {
 		);
 	}
 
-	static async logLibraryNotFound(
-		data,
-		missingLib,
-		partNames,
-
-		trx = null,
-	) {
+	static async logLibraryNotFound(data, missingLib, partNames, trx = null) {
 		let errorDetail = "";
 		if (missingLib === "both") {
 			errorDetail = `Both library not found - L:${partNames.left}, R:${partNames.right}`;
@@ -133,6 +134,8 @@ class APILogger {
 		await this.log(
 			{
 				action: "check",
+				user_id: data.USERID,
+				device_name: data.DEVICENAME,
 				left_id: data.LEFTID,
 				left_unique_id: data.LEFTUNIQUEID,
 				right_id: data.RIGHTID,
@@ -149,7 +152,6 @@ class APILogger {
 		data,
 		incompleteParts,
 		partNames,
-
 		trx = null,
 	) {
 		let errorDetail = "";
@@ -164,6 +166,8 @@ class APILogger {
 		await this.log(
 			{
 				action: "check",
+				user_id: data.USERID,
+				device_name: data.DEVICENAME,
 				left_id: data.LEFTID,
 				left_unique_id: data.LEFTUNIQUEID,
 				right_id: data.RIGHTID,
@@ -176,13 +180,7 @@ class APILogger {
 		);
 	}
 
-	static async logReelWidthIssue(
-		data,
-		issue,
-		widths,
-
-		trx = null,
-	) {
+	static async logReelWidthIssue(data, issue, widths, trx = null) {
 		let statusCode = issue === "both_above_8" ? 2 : 0;
 		let errorDetail = "";
 
@@ -197,6 +195,8 @@ class APILogger {
 		await this.log(
 			{
 				action: "check",
+				user_id: data.USERID,
+				device_name: data.DEVICENAME,
 				left_id: data.LEFTID,
 				left_unique_id: data.LEFTUNIQUEID,
 				right_id: data.RIGHTID,
@@ -212,12 +212,7 @@ class APILogger {
 		);
 	}
 
-	static async logValueToleranceNotFound(
-		data,
-		missingData,
-
-		trx = null,
-	) {
+	static async logValueToleranceNotFound(data, missingData, trx = null) {
 		let errorDetail = "";
 		if (missingData === "both") {
 			errorDetail = `Both missing value/tolerance - L:${data.LEFTID}, R:${data.RIGHTID}`;
@@ -230,6 +225,8 @@ class APILogger {
 		await this.log(
 			{
 				action: "check",
+				user_id: data.USERID,
+				device_name: data.DEVICENAME,
 				left_id: data.LEFTID,
 				left_unique_id: data.LEFTUNIQUEID,
 				right_id: data.RIGHTID,
@@ -242,25 +239,21 @@ class APILogger {
 		);
 	}
 
-	static async logCheckSuccess(
-		data,
-		successType,
-		detail,
-
-		trx = null,
-	) {
+	static async logCheckSuccess(data, successType, detail, trx = null) {
 		let message = "";
 		if (successType === "body_marking") {
-			message = "SUCCESS_WITH_BODY_MARKING";
+			message = "PARTS_WITH_BODY_MARKING";
 		} else if (successType === "not_cap_res") {
-			message = "SUCCESS_NOT_CAP_RES";
+			message = "PARTS_NOT_CAP_RES";
 		} else {
-			message = "PARTS_IDENTICAL_SUCCESS";
+			message = "PARTS_IDENTICAL";
 		}
 
 		await this.log(
 			{
 				action: "check",
+				user_id: data.USERID,
+				device_name: data.DEVICENAME,
 				left_id: data.LEFTID,
 				left_unique_id: data.LEFTUNIQUEID,
 				right_id: data.RIGHTID,
@@ -277,6 +270,8 @@ class APILogger {
 		await this.log(
 			{
 				action: "check",
+				user_id: data.USERID,
+				device_name: data.DEVICENAME,
 				left_id: data.LEFTID,
 				left_unique_id: data.LEFTUNIQUEID,
 				right_id: data.RIGHTID,

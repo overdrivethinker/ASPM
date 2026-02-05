@@ -12,8 +12,7 @@ router.get("/overview", async (req, res) => {
 		const [
 			partLibraryTotal,
 			partListTotal,
-			partListWithValue,
-			partListWithTolerance,
+			partListWithValueAndTolerance,
 			lcrStats,
 		] = await Promise.all([
 			knex("part_library").count("* as count").first(),
@@ -24,10 +23,6 @@ router.get("/overview", async (req, res) => {
 				.count("* as count")
 				.whereNotNull("value")
 				.where("value", "!=", "")
-				.first(),
-
-			knex("part_list")
-				.count("* as count")
 				.whereNotNull("tolerance")
 				.where("tolerance", "!=", "")
 				.first(),
@@ -58,9 +53,8 @@ router.get("/overview", async (req, res) => {
 			data: {
 				partLibraryTotal: Number(partLibraryTotal?.count || 0),
 				partListTotal: Number(partListTotal?.count || 0),
-				partListWithValue: Number(partListWithValue?.count || 0),
-				partListWithTolerance: Number(
-					partListWithTolerance?.count || 0,
+				partListWithValueAndTolerance: Number(
+					partListWithValueAndTolerance?.count || 0,
 				),
 				lcr: {
 					totalTests,
