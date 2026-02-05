@@ -4,7 +4,7 @@ const knex = require("../database/db");
 
 router.get("/export", async (req, res) => {
 	try {
-		const { search = "", start_date, end_date } = req.query;
+		const { start_date, end_date } = req.query;
 
 		const buildDateRange = (start, end) => {
 			if (start && end) {
@@ -31,9 +31,19 @@ router.get("/export", async (req, res) => {
 				"pl_left.part_number",
 			)
 			.leftJoin(
+				"part_library as plib_left",
+				"pl_left.part_name",
+				"plib_left.part_name",
+			)
+			.leftJoin(
 				"part_list as pl_right",
 				"lcr.right_id",
 				"pl_right.part_number",
+			)
+			.leftJoin(
+				"part_library as plib_right",
+				"pl_right.part_name",
+				"plib_right.part_name",
 			)
 			.select(
 				"lcr.timestamp",
@@ -42,6 +52,7 @@ router.get("/export", async (req, res) => {
 				"lcr.left_id",
 				"pl_left.value as left_value_value",
 				"pl_left.tolerance as left_tolerance",
+				"plib_left.component_size as left_component_size",
 				"lcr.left_value",
 				"lcr.right_id",
 				"pl_right.value as right_value_value",
@@ -50,20 +61,6 @@ router.get("/export", async (req, res) => {
 				"lcr.result",
 			)
 			.orderBy("lcr.timestamp", "desc");
-
-		if (search) {
-			query = query.where(function () {
-				this.where("lcr.device_name", "like", `%${search}%`)
-					.orWhere("lcr.user_id", "like", `%${search}%`)
-					.orWhere("lcr.machine_sn", "like", `%${search}%`)
-					.orWhere("lcr.left_id", "like", `%${search}%`)
-					.orWhere("lcr.right_id", "like", `%${search}%`)
-					.orWhere("pl_left.part_number", "like", `%${search}%`)
-					.orWhere("pl_left.part_name", "like", `%${search}%`)
-					.orWhere("pl_right.part_number", "like", `%${search}%`)
-					.orWhere("pl_right.part_name", "like", `%${search}%`);
-			});
-		}
 
 		if (dateRange) {
 			query = query.where(function () {
