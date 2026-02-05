@@ -79,4 +79,47 @@ router.get("/overview", async (req, res) => {
 	}
 });
 
+router.get("/chart-data", async (req, res) => {
+	try {
+		const range = req.query.range || "90d";
+
+		const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
+
+		const records = await knex("LCR_records")
+			.select(
+				knex.raw("CAST([timestamp] AS DATE) AS [date]"),
+				knex.raw(
+					"SUM(CASE WHEN result = 'Pass' THEN 1 ELSE 0 END) AS pass",
+				),
+				knex.raw(
+					"SUM(CASE WHEN result = 'Fail' THEN 1 ELSE 0 END) AS fail",
+				),
+			)
+			.where(
+				"[timestamp]",
+				">=",
+				knex.raw("DATEADD(DAY, ?, CAST(GETDATE() AS DATE))", [-days]),
+			)
+			.groupBy(knex.raw("CAST([timestamp] AS DATE)"))
+			.orderBy("date", "asc");
+
+		const chartData = records.map((r) => ({
+			date: r.date,
+			pass: Number(r.pass) || 0,
+			fail: Number(r.fail) || 0,
+		}));
+
+		res.json({
+			success: true,
+			data: chartData,
+		});
+	} catch (error) {
+		console.error("Error fetching chart data:", error);
+		res.status(500).json({
+			success: false,
+			message: "Failed to fetch chart data",
+		});
+	}
+});
+
 module.exports = router;

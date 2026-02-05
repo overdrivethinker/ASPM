@@ -89,46 +89,67 @@ router.get("/export", async (req, res) => {
 	}
 });
 
-router.get("/chart-data", async (req, res) => {
+router.get("/activity-logs/export", async (req, res) => {
 	try {
-		const range = req.query.range || "90d";
+		const { start_date, end_date } = req.query;
 
-		const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
+		const buildDateRange = (start, end) => {
+			if (start && end) {
+				return {
+					start: `${start} 00:00:00`,
+					end: `${end} 23:59:59`,
+				};
+			}
+			if (start) {
+				return { start: `${start} 00:00:00` };
+			}
+			if (end) {
+				return { end: `${end} 23:59:59` };
+			}
+			return null;
+		};
 
-		const records = await knex("LCR_records")
+		const dateRange = buildDateRange(start_date, end_date);
+
+		let query = knex("api_activity_logs as log")
 			.select(
-				knex.raw("CAST([timestamp] AS DATE) AS [date]"),
-				knex.raw(
-					"SUM(CASE WHEN result = 'Pass' THEN 1 ELSE 0 END) AS pass",
-				),
-				knex.raw(
-					"SUM(CASE WHEN result = 'Fail' THEN 1 ELSE 0 END) AS fail",
-				),
+				"log.timestamp",
+				"log.user_id",
+				"log.device_name",
+				"log.left_id",
+				"log.left_unique_id",
+				"log.right_id",
+				"log.right_unique_id",
+				"log.status_code",
+				"log.message",
+				"log.error_detail",
 			)
-			.where(
-				"[timestamp]",
-				">=",
-				knex.raw("DATEADD(DAY, ?, CAST(GETDATE() AS DATE))", [-days]),
-			)
-			.groupBy(knex.raw("CAST([timestamp] AS DATE)"))
-			.orderBy("date", "asc");
+			.orderBy("log.timestamp", "desc");
 
-		const chartData = records.map((r) => ({
-			date: r.date,
-			pass: Number(r.pass) || 0,
-			fail: Number(r.fail) || 0,
-		}));
+		if (dateRange) {
+			query = query.where(function () {
+				if (dateRange.start && dateRange.end) {
+					this.whereBetween("log.timestamp", [
+						dateRange.start,
+						dateRange.end,
+					]);
+				} else if (dateRange.start) {
+					this.where("log.timestamp", ">=", dateRange.start);
+				} else if (dateRange.end) {
+					this.where("log.timestamp", "<=", dateRange.end);
+				}
+			});
+		}
+
+		const rows = await query;
 
 		res.json({
-			success: true,
-			data: chartData,
+			data: rows,
+			total: rows.length,
 		});
-	} catch (error) {
-		console.error("Error fetching chart data:", error);
-		res.status(500).json({
-			success: false,
-			message: "Failed to fetch chart data",
-		});
+	} catch (err) {
+		console.error("GET /api-activity-logs/export error:", err);
+		res.status(500).json({ error: "Internal Server Error" });
 	}
 });
 
