@@ -1,12 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const knex = require("../database/db");
-
-function toWIB(date) {
-	const wib = new Date(date);
-	wib.setHours(wib.getHours() + 7);
-	return wib;
-}
+const { toWIB } = require("../utils/helpers");
 
 router.get("/overview", async (req, res) => {
 	try {

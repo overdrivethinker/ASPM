@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const knex = require("../database/db");
+const { toWIB } = require("../utils/helpers");
 
 router.get("/", async (req, res) => {
 	try {
@@ -116,7 +117,7 @@ router.put("/:id", async (req, res) => {
 				component_type: component_type?.trim() || null,
 				component_size: component_size?.trim() || null,
 				reel_width: reel_width?.trim() || null,
-				updated_date: knex.fn.now(),
+				updated_date: toWIB(new Date()),
 			});
 
 		const updatedPart = await knex("part_library")

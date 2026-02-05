@@ -24,6 +24,12 @@ function formatTimestamp() {
 	return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
 }
 
+function toWIB(date) {
+	const wib = new Date(date);
+	wib.setHours(wib.getHours() + 7);
+	return wib;
+}
+
 function validateField(value, fieldName, res) {
 	if (!value || value.trim() === "") {
 		return res.status(400).json({
@@ -38,4 +44,5 @@ module.exports = {
 	formatUptime,
 	formatTimestamp,
 	validateField,
+	toWIB,
 };
