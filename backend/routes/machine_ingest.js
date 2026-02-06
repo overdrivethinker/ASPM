@@ -172,6 +172,10 @@ async function handleCheck(req, res) {
 				const rawAssyNo = getAssyNo.TLWS_MDLCD;
 				const assyNo = rawAssyNo.slice(0, 7) + "-" + rawAssyNo.slice(7);
 
+				let componentType = "";
+				let isCommon = false;
+				let isSA = false;
+
 				const checkCommonPart = await trx("dbo.ENG_COMM_SUB_PART")
 					.where("[ASSY CODE]", assyNo)
 					.andWhere(function () {
@@ -199,6 +203,8 @@ async function handleCheck(req, res) {
 					};
 				}
 
+				isCommon = true;
+
 				const checkSAParts = await trx("dbo.wms_v_mitmsa")
 					.where("MITMSA_MDLCD", rawAssyNo)
 					.andWhere(function () {
@@ -224,6 +230,14 @@ async function handleCheck(req, res) {
 						message: `\nPARTS NOT SA\nL:${LEFTID} | R:${RIGHTID}\nFOR ASSY NO:${assyNo}`,
 						data: "",
 					};
+				}
+
+				isSA = true;
+
+				if (isSA) {
+					componentType = "SA PARTS";
+				} else if (isCommon) {
+					componentType = `${checkCommonPart.TYPE} PARTS`;
 				}
 			}
 
@@ -372,12 +386,13 @@ async function handleCheck(req, res) {
 						left: leftLibrary.reel_width,
 						right: rightLibrary.reel_width,
 					},
+					componentType,
 					trx,
 				);
 
 				return {
 					code: 2,
-					message: "BOTH TRAYS IC / REEL WIDTH ARE ABOVE 8MM",
+					message: `BOTH TRAYS IC / REEL WIDTH ARE ABOVE 8MM\n(${componentType})`,
 					data: "",
 				};
 			} else if (leftLibrary.reel_width !== "8") {
@@ -430,6 +445,7 @@ async function handleCheck(req, res) {
 					req.body,
 					"body_marking",
 					"Component type with body marking (CAP/RES)",
+					componentType,
 					trx,
 				);
 
@@ -447,6 +463,7 @@ async function handleCheck(req, res) {
 					req.body,
 					"not_cap_res",
 					`Component types: L:${leftLibrary.component_type}, R:${rightLibrary.component_type}`,
+					componentType,
 					trx,
 				);
 
@@ -503,6 +520,7 @@ async function handleCheck(req, res) {
 				req.body,
 				"identical",
 				`Description: ${leftDescription}`,
+				componentType,
 				trx,
 			);
 

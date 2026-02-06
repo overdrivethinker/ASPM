@@ -180,7 +180,13 @@ class APILogger {
 		);
 	}
 
-	static async logReelWidthIssue(data, issue, widths, trx = null) {
+	static async logReelWidthIssue(
+		data,
+		issue,
+		widths,
+		componentType,
+		trx = null,
+	) {
 		let statusCode = issue === "both_above_8" ? 2 : 0;
 		let errorDetail = "";
 
@@ -206,7 +212,7 @@ class APILogger {
 					issue === "both_above_8"
 						? "BOTH_REEL_WIDTH_ABOVE_8MM"
 						: "REEL_WIDTH_MISMATCH",
-				error_detail: errorDetail,
+				error_detail: `${errorDetail} (${componentType})`,
 			},
 			trx,
 		);
@@ -239,7 +245,13 @@ class APILogger {
 		);
 	}
 
-	static async logCheckSuccess(data, successType, detail, trx = null) {
+	static async logCheckSuccess(
+		data,
+		successType,
+		detail,
+		componentType,
+		trx = null,
+	) {
 		let message = "";
 		if (successType === "body_marking") {
 			message = "PARTS_WITH_BODY_MARKING";
@@ -260,7 +272,7 @@ class APILogger {
 				right_unique_id: data.RIGHTUNIQUEID,
 				status_code: 1,
 				message: message,
-				error_detail: detail,
+				error_detail: `${detail} (${componentType})`,
 			},
 			trx,
 		);
