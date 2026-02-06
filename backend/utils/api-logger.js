@@ -334,6 +334,105 @@ class APILogger {
 			trx,
 		);
 	}
+
+	static async logPartDeleted(data, missingParts, trx = null) {
+		let errorDetail = "";
+		if (missingParts === "both") {
+			errorDetail = `Both deleted - L:${data.LEFTID}, R:${data.RIGHTID}`;
+		} else if (missingParts === "left") {
+			errorDetail = `Left deleted - L:${data.LEFTID}`;
+		} else {
+			errorDetail = `Right deleted - R:${data.RIGHTID}`;
+		}
+
+		await this.log(
+			{
+				action: "check",
+				user_id: data.USERID,
+				device_name: data.DEVICENAME,
+				left_id: data.LEFTID,
+				left_unique_id: data.LEFTUNIQUEID,
+				right_id: data.RIGHTID,
+				right_unique_id: data.RIGHTUNIQUEID,
+				status_code: 0,
+				message: "PART_DELETED",
+				error_detail: errorDetail,
+			},
+			trx,
+		);
+	}
+
+	static async logPSNDifferent(data, leftDocCode, rightDocCode, trx = null) {
+		await this.log(
+			{
+				action: "check",
+				user_id: data.USERID,
+				device_name: data.DEVICENAME,
+				left_id: data.LEFTID,
+				left_unique_id: data.LEFTUNIQUEID,
+				right_id: data.RIGHTID,
+				right_unique_id: data.RIGHTUNIQUEID,
+				status_code: 0,
+				message: "PSN_DIFFERENT",
+				error_detail: `Left: ${leftDocCode}, Right: ${rightDocCode}`,
+			},
+			trx,
+		);
+	}
+
+	static async logAssyNotFound(data, rightDocCode, trx = null) {
+		await this.log(
+			{
+				action: "check",
+				user_id: data.USERID,
+				device_name: data.DEVICENAME,
+				left_id: data.LEFTID,
+				left_unique_id: data.LEFTUNIQUEID,
+				right_id: data.RIGHTID,
+				right_unique_id: data.RIGHTUNIQUEID,
+				status_code: 0,
+				message: "ASSY_NO_NOT_FOUND",
+				error_detail: `Assy Number on PSN: ${rightDocCode} not found`,
+			},
+			trx,
+		);
+	}
+
+	static async logPartNotCommon(data, trx = null) {
+		await this.log(
+			{
+				action: "check",
+				user_id: data.USERID,
+				device_name: data.DEVICENAME,
+				left_id: data.LEFTID,
+				left_unique_id: data.LEFTUNIQUEID,
+				right_id: data.RIGHTID,
+				right_unique_id: data.RIGHTUNIQUEID,
+				status_code: 0,
+				message: "PARTS_NOT_COMMON_OR_SUBSTITUTE",
+				error_detail: `Left: ${data.LEFTID}, Right: ${data.RIGHTID}`,
+			},
+			trx,
+		);
+	}
+
+	static async logPartNotSA(data, trx = null) {
+		await this.log(
+			{
+				action: "check",
+				user_id: data.USERID,
+				device_name: data.DEVICENAME,
+				left_id: data.LEFTID,
+				left_unique_id: data.LEFTUNIQUEID,
+				right_id: data.RIGHTID,
+				right_unique_id: data.RIGHTUNIQUEID,
+				status_code: 0,
+				message: "PARTS_NOT_SA",
+				error_detail: `Left: ${data.LEFTID}, Right: ${data.RIGHTID}`,
+			},
+			trx,
+		);
+	}
 }
 
 module.exports = APILogger;

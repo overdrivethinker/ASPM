@@ -46,8 +46,8 @@ async function handleCheck(req, res) {
 		DEVICENAME,
 	} = req.body;
 
-	await knex.transaction(async (trx) => {
-		try {
+	try {
+		const result = await knex.transaction(async (trx) => {
 			if (!LEFTID || !RIGHTID) {
 				await APILogger.logMissingFields({
 					action: "check",
@@ -55,35 +55,176 @@ async function handleCheck(req, res) {
 					right_id: RIGHTID,
 					timestamp: TIMESTAMP,
 					user_id: USERID,
-					machine_sn: MACHINESN,
 					device_name: DEVICENAME,
 				});
 
-				return res.json({
+				return {
 					code: 0,
 					message: "\nLEFTID AND RIGHTID ARE REQUIRED",
 					data: "",
-				});
-			}
-
-			if (LEFTID != RIGHTID) {
-				await APILogger.logPartsDifferent(req.body, trx);
-
-				return res.json({
-					code: 0,
-					message: "\nPARTS ARE DIFFERENT",
-					data: "",
-				});
+				};
 			}
 
 			if (LEFTUNIQUEID == RIGHTUNIQUEID) {
 				await APILogger.logDuplicateCode(req.body, trx);
 
-				return res.json({
+				return {
 					code: 0,
 					message: "\nDUPLICATE UNIQUE CODE",
 					data: "",
-				});
+				};
+			}
+
+			const leftUniquePart = await trx("dbo.wms_v_raw_material_labels")
+				.where({
+					code: LEFTUNIQUEID,
+					item_code: LEFTID,
+				})
+				.whereNull("deleted_at")
+				.first();
+
+			const rightUniquePart = await trx("dbo.wms_v_raw_material_labels")
+				.where({
+					code: RIGHTUNIQUEID,
+					item_code: RIGHTID,
+				})
+				.whereNull("deleted_at")
+				.first();
+
+			if (!leftUniquePart || !rightUniquePart) {
+				const missingType =
+					!leftUniquePart && !rightUniquePart
+						? "both"
+						: !leftUniquePart
+							? "left"
+							: "right";
+
+				await APILogger.logPartDeleted(req.body, missingType, trx);
+
+				if (!leftUniquePart && !rightUniquePart) {
+					return {
+						code: 0,
+						message: `\nPART WAS DELETED\nL:${LEFTUNIQUEID} | R:${RIGHTUNIQUEID}`,
+						data: "",
+					};
+				}
+				if (!leftUniquePart) {
+					return {
+						code: 0,
+						message: `\nLEFT PART WAS DELETED: ${LEFTUNIQUEID}`,
+						data: "",
+					};
+				}
+				if (!rightUniquePart) {
+					return {
+						code: 0,
+						message: `\nRIGHT PART WAS DELETED: ${RIGHTUNIQUEID}`,
+						data: "",
+					};
+				}
+			}
+
+			const leftDocCode = leftUniquePart.doc_code;
+			const rightDocCode = rightUniquePart.doc_code;
+
+			if (leftDocCode !== rightDocCode) {
+				await APILogger.logPSNDifferent(
+					req.body,
+					leftDocCode,
+					rightDocCode,
+					trx,
+				);
+
+				return {
+					code: 0,
+					message: `\nPSN DIFFERENT\nL DOC:${leftDocCode} | R DOC:${rightDocCode}`,
+					data: "",
+				};
+			}
+
+			if (LEFTID != RIGHTID) {
+				// await APILogger.logPartsDifferent(req.body, trx);
+
+				// return {
+				// 	code: 0,
+				// 	message: "\nPARTS ARE DIFFERENT",
+				// 	data: "",
+				// };
+				const getAssyNo = await trx("dbo.WMS_TLWS")
+					.where("TLWS_PSNNO", rightDocCode)
+					.orderBy("TLWS_LUPDT", "desc")
+					.first();
+
+				if (!getAssyNo || !getAssyNo.TLWS_MDLCD) {
+					await APILogger.logAssyNoNotFound(
+						req.body,
+						rightDocCode,
+						trx,
+					);
+
+					return {
+						code: 0,
+						message: "\nASSY NO NOT FOUND\nPSN:" + rightDocCode,
+						data: "",
+					};
+				}
+
+				const rawAssyNo = getAssyNo.TLWS_MDLCD;
+				const assyNo = rawAssyNo.slice(0, 7) + "-" + rawAssyNo.slice(7);
+
+				const checkCommonPart = await trx("dbo.ENG_COMM_SUB_PART")
+					.where("[ASSY CODE]", assyNo)
+					.andWhere(function () {
+						this.where(function () {
+							this.where("[MAIN PARTS]", LEFTID).andWhere(
+								"[ALTERNATIVE PARTS]",
+								RIGHTID,
+							);
+						}).orWhere(function () {
+							this.where("[MAIN PARTS]", RIGHTID).andWhere(
+								"[ALTERNATIVE PARTS]",
+								LEFTID,
+							);
+						});
+					})
+					.first();
+
+				if (!checkCommonPart) {
+					await APILogger.logPartNotCommon(req.body, trx);
+
+					return {
+						code: 0,
+						message: `\nPARTS NOT COMMON OR SUBSTITUTE\nL:${LEFTID} | R:${RIGHTID}\nFOR ASSY NO:${assyNo}`,
+						data: "",
+					};
+				}
+
+				const checkSAParts = await trx("dbo.wms_v_mitmsa")
+					.where("MITMSA_MDLCD", rawAssyNo)
+					.andWhere(function () {
+						this.where(function () {
+							this.where("MITMSA_ITCD", LEFTID).andWhere(
+								"MITMSA_ITCDS",
+								RIGHTID,
+							);
+						}).orWhere(function () {
+							this.where("MITMSA_ITCD", RIGHTID).andWhere(
+								"MITMSA_ITCDS",
+								LEFTID,
+							);
+						});
+					})
+					.first();
+
+				if (!checkSAParts) {
+					await APILogger.logPartNotSA(req.body, trx);
+
+					return {
+						code: 0,
+						message: `\nPARTS NOT SA\nL:${LEFTID} | R:${RIGHTID}\nFOR ASSY NO:${assyNo}`,
+						data: "",
+					};
+				}
 			}
 
 			const leftPart = await trx("dbo.part_list")
@@ -107,23 +248,23 @@ async function handleCheck(req, res) {
 				await APILogger.logPartNotFound(req.body, missingType, trx);
 
 				if (!leftPart && !rightPart) {
-					return res.json({
+					return {
 						code: 0,
 						message: `\nPART NUMBERS NOT FOUND\nL:${LEFTID} | R:${RIGHTID}`,
 						data: "",
-					});
+					};
 				} else if (!leftPart) {
-					return res.json({
+					return {
 						code: 0,
 						message: `\nPART NUMBER NOT FOUND\nL:${LEFTID}`,
 						data: "",
-					});
+					};
 				} else {
-					return res.json({
+					return {
 						code: 0,
 						message: `\nPART NUMBER NOT FOUND\nR:${RIGHTID}`,
 						data: "",
-					});
+					};
 				}
 			}
 
@@ -161,23 +302,23 @@ async function handleCheck(req, res) {
 				);
 
 				if (!leftLibrary && !rightLibrary) {
-					return res.json({
+					return {
 						code: 0,
 						message: `\nPARTS LIBRARY NOT FOUND\nL:${leftPart.part_name} | R:${rightPart.part_name}`,
 						data: "",
-					});
+					};
 				} else if (!leftLibrary) {
-					return res.json({
+					return {
 						code: 0,
 						message: `\nPARTS LIBRARY NOT FOUND\nL:${leftPart.part_name}`,
 						data: "",
-					});
+					};
 				} else {
-					return res.json({
+					return {
 						code: 0,
 						message: `\nPARTS LIBRARY NOT FOUND\nR:${rightPart.part_name}`,
 						data: "",
-					});
+					};
 				}
 			}
 
@@ -200,23 +341,23 @@ async function handleCheck(req, res) {
 				);
 
 				if (!leftComplete && !rightComplete) {
-					return res.json({
+					return {
 						code: 0,
 						message: `\nPARTS LIBRARY INCOMPLETE\nL:${leftPart.part_name} | R:${rightPart.part_name}`,
 						data: "",
-					});
+					};
 				} else if (!leftComplete) {
-					return res.json({
+					return {
 						code: 0,
 						message: `\nPARTS LIBRARY INCOMPLETE\nL:${leftPart.part_name}`,
 						data: "",
-					});
+					};
 				} else {
-					return res.json({
+					return {
 						code: 0,
 						message: `\nPARTS LIBRARY INCOMPLETE\nR:${rightPart.part_name}`,
 						data: "",
-					});
+					};
 				}
 			}
 
@@ -234,11 +375,11 @@ async function handleCheck(req, res) {
 					trx,
 				);
 
-				return res.json({
+				return {
 					code: 2,
 					message: "BOTH TRAYS IC / REEL WIDTH ARE ABOVE 8MM",
 					data: "",
-				});
+				};
 			} else if (leftLibrary.reel_width !== "8") {
 				await APILogger.logReelWidthIssue(
 					req.body,
@@ -253,11 +394,11 @@ async function handleCheck(req, res) {
 				const width = [];
 				width.push(`L:${leftLibrary.reel_width}MM`);
 				width.push(`R:${rightLibrary.reel_width}MM`);
-				return res.json({
+				return {
 					code: 0,
 					message: `\nREEL WIDTH MISMATCH\n${width.join(" | ")}`,
 					data: "",
-				});
+				};
 			} else if (rightLibrary.reel_width !== "8") {
 				await APILogger.logReelWidthIssue(
 					req.body,
@@ -269,11 +410,11 @@ async function handleCheck(req, res) {
 					trx,
 				);
 
-				return res.json({
+				return {
 					code: 0,
 					message: `\nREEL WIDTH MISMATCH\nR:${rightLibrary.reel_width}MM`,
 					data: "",
-				});
+				};
 			}
 
 			const leftHasBM = leftPart?.specification?.startsWith("BM");
@@ -292,13 +433,13 @@ async function handleCheck(req, res) {
 					trx,
 				);
 
-				return res.json({
+				return {
 					code: 1,
 					message: "COMPONENT TYPE WITH BODY MARKING",
 					data: {
 						DESCRIPTION: "",
 					},
-				});
+				};
 			}
 
 			if (!hasBodyMarking && !isCapRes) {
@@ -309,13 +450,13 @@ async function handleCheck(req, res) {
 					trx,
 				);
 
-				return res.json({
+				return {
 					code: 1,
 					message: "COMPONENT TYPE NOT CAP/RES",
 					data: {
 						DESCRIPTION: "",
 					},
-				});
+				};
 			}
 
 			const leftInvalid = !leftPart.value || !leftPart.tolerance;
@@ -336,23 +477,23 @@ async function handleCheck(req, res) {
 				);
 
 				if (leftInvalid && rightInvalid) {
-					return res.json({
+					return {
 						code: 0,
 						message: `\nVALUE / TOLERANCE NOT FOUND FOR CAP/RES PART\nL:${LEFTID} | R:${RIGHTID}`,
 						data: "",
-					});
+					};
 				} else if (leftInvalid) {
-					return res.json({
+					return {
 						code: 0,
 						message: `\nVALUE / TOLERANCE NOT FOUND FOR CAP/RES PART\nL:${LEFTID}`,
 						data: "",
-					});
+					};
 				} else {
-					return res.json({
+					return {
 						code: 0,
 						message: `\nVALUE / TOLERANCE NOT FOUND FOR CAP/RES PART\nR:${RIGHTID}`,
 						data: "",
-					});
+					};
 				}
 			}
 
@@ -365,18 +506,24 @@ async function handleCheck(req, res) {
 				trx,
 			);
 
-			return res.json({
+			return {
 				code: 1,
 				message: "PARTS ARE IDENTICAL",
 				data: {
 					DESCRIPTION: leftDescription,
 				},
-			});
-		} catch (err) {
-			await APILogger.logCheckError(req.body, err, trx);
-			throw err;
-		}
-	});
+			};
+		});
+
+		return res.json(result);
+	} catch (err) {
+		await APILogger.logCheckError(req.body, err);
+		return res.status(500).json({
+			code: 0,
+			message: err.message,
+			data: "",
+		});
+	}
 }
 
 async function handleSave(req, res) {
@@ -456,10 +603,11 @@ async function handleSave(req, res) {
 		});
 	} catch (err) {
 		await APILogger.logSaveError(req.body, err);
-		return res.json({
+		return res.status(500).json({
 			code: 0,
 			message: err.message,
 		});
 	}
 }
+
 module.exports = router;
