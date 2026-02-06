@@ -397,7 +397,6 @@ async function handleSave(req, res) {
 
 	if (!LEFTID || !RIGHTID || !TIMESTAMP || !USERID) {
 		await APILogger.logSaveMissingFields(req.body);
-
 		return res.json({
 			code: 0,
 			message: "REQUIRED FIELDS ARE MISSING",
@@ -407,8 +406,30 @@ async function handleSave(req, res) {
 
 	try {
 		await knex.transaction(async (trx) => {
-			const finalResult =
+			const leftPart = await trx("dbo.part_list")
+				.select("*")
+				.where("part_number", LEFTID)
+				.first();
+			const rightPart = await trx("dbo.part_list")
+				.select("*")
+				.where("part_number", RIGHTID)
+				.first();
+
+			const leftHasBM = leftPart?.specification?.startsWith("BM");
+			const rightHasBM = rightPart?.specification?.startsWith("BM");
+			const hasBodyMarking = !!leftHasBM || !!rightHasBM;
+
+			let finalResult =
 				LEFTRESULT === "OK" && RIGHTRESULT === "OK" ? "PASS" : "FAIL";
+
+			let leftValueToSave = LEFTVALUE;
+			let rightValueToSave = RIGHTVALUE;
+
+			if (hasBodyMarking) {
+				finalResult = "PASS";
+				leftValueToSave = "BM";
+				rightValueToSave = "BM";
+			}
 
 			await trx("dbo.LCR_records").insert({
 				timestamp: TIMESTAMP,
@@ -417,11 +438,11 @@ async function handleSave(req, res) {
 				device_name: DEVICENAME,
 				left_id: LEFTID,
 				left_unique_id: LEFTUNIQUEID,
-				left_value: LEFTVALUE,
+				left_value: leftValueToSave,
 				left_result: LEFTRESULT,
 				right_id: RIGHTID,
 				right_unique_id: RIGHTUNIQUEID,
-				right_value: RIGHTVALUE,
+				right_value: rightValueToSave,
 				right_result: RIGHTRESULT,
 				result: finalResult,
 			});
@@ -435,12 +456,10 @@ async function handleSave(req, res) {
 		});
 	} catch (err) {
 		await APILogger.logSaveError(req.body, err);
-
 		return res.json({
 			code: 0,
 			message: err.message,
 		});
 	}
 }
-
 module.exports = router;
