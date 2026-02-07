@@ -137,10 +137,14 @@ async function handleCheck(req, res) {
 
 				return {
 					code: 0,
-					message: `\nPSN DIFFERENT\nL DOC:${leftDocCode} | R DOC:${rightDocCode}`,
+					message: `\nPSN ARE DIFFERENT\nL DOC:${leftDocCode} |\nR DOC:${rightDocCode}`,
 					data: "",
 				};
 			}
+
+			let componentType = "NORMAL PARTS";
+			let isCommon = false;
+			let isSA = false;
 
 			if (LEFTID != RIGHTID) {
 				// await APILogger.logPartsDifferent(req.body, trx);
@@ -152,29 +156,26 @@ async function handleCheck(req, res) {
 				// };
 				const getAssyNo = await trx("dbo.WMS_TLWS")
 					.where("TLWS_PSNNO", rightDocCode)
-					.orderBy("TLWS_LUPDT", "desc")
+					.orderBy("TLWS_LUPDT", "asc")
 					.first();
 
-				if (!getAssyNo || !getAssyNo.TLWS_MDLCD) {
+				const rawAssyNo = getAssyNo.TLWS_MDLCD;
+				const assyNo = rawAssyNo.slice(0, 7) + "-" + rawAssyNo.slice(7);
+
+				if (!rawAssyNo) {
 					await APILogger.logAssyNoNotFound(
 						req.body,
+						rawAssyNo,
 						rightDocCode,
 						trx,
 					);
 
 					return {
 						code: 0,
-						message: "\nASSY NO NOT FOUND\nPSN:" + rightDocCode,
+						message: `\nASSY NO:${rawAssyNo} NOT FOUND\nON PSN:${rightDocCode}`,
 						data: "",
 					};
 				}
-
-				const rawAssyNo = getAssyNo.TLWS_MDLCD;
-				const assyNo = rawAssyNo.slice(0, 7) + "-" + rawAssyNo.slice(7);
-
-				let componentType = "";
-				let isCommon = false;
-				let isSA = false;
 
 				const checkCommonPart = await trx("dbo.ENG_COMM_SUB_PART")
 					.where("[ASSY CODE]", assyNo)
@@ -392,7 +393,7 @@ async function handleCheck(req, res) {
 
 				return {
 					code: 2,
-					message: `BOTH TRAYS IC / REEL WIDTH ARE ABOVE 8MM\n(${componentType})`,
+					message: `BOTH TRAYS IC/REEL WIDTH ARE ABOVE 8MM\n(${componentType})`,
 					data: "",
 				};
 			} else if (leftLibrary.reel_width !== "8") {
@@ -496,19 +497,19 @@ async function handleCheck(req, res) {
 				if (leftInvalid && rightInvalid) {
 					return {
 						code: 0,
-						message: `\nVALUE / TOLERANCE NOT FOUND FOR CAP/RES PART\nL:${LEFTID} | R:${RIGHTID}`,
+						message: `\nVALUE/TOLERANCE NOT FOUND FOR CAP/RES PART\nL:${LEFTID} | R:${RIGHTID}`,
 						data: "",
 					};
 				} else if (leftInvalid) {
 					return {
 						code: 0,
-						message: `\nVALUE / TOLERANCE NOT FOUND FOR CAP/RES PART\nL:${LEFTID}`,
+						message: `\nVALUE/TOLERANCE NOT FOUND FOR CAP/RES PART\nL:${LEFTID}`,
 						data: "",
 					};
 				} else {
 					return {
 						code: 0,
-						message: `\nVALUE / TOLERANCE NOT FOUND FOR CAP/RES PART\nR:${RIGHTID}`,
+						message: `\nVALUE/TOLERANCE NOT FOUND FOR CAP/RES PART\nR:${RIGHTID}`,
 						data: "",
 					};
 				}

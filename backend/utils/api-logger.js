@@ -69,7 +69,7 @@ class APILogger {
 				right_id: data.RIGHTID,
 				right_unique_id: data.RIGHTUNIQUEID,
 				status_code: 0,
-				message: "PARTS_DIFFERENT",
+				message: "DIFFERENT_PARTS",
 				error_detail: `Left: ${data.LEFTID}, Right: ${data.RIGHTID}`,
 			},
 			trx,
@@ -385,14 +385,14 @@ class APILogger {
 				right_id: data.RIGHTID,
 				right_unique_id: data.RIGHTUNIQUEID,
 				status_code: 0,
-				message: "PSN_DIFFERENT",
+				message: "DIFFERENT_PSN",
 				error_detail: `Left: ${leftDocCode}, Right: ${rightDocCode}`,
 			},
 			trx,
 		);
 	}
 
-	static async logAssyNotFound(data, rightDocCode, trx = null) {
+	static async logAssyNotFound(data, rawAssyNo, rightDocCode, trx = null) {
 		await this.log(
 			{
 				action: "check",
@@ -404,7 +404,7 @@ class APILogger {
 				right_unique_id: data.RIGHTUNIQUEID,
 				status_code: 0,
 				message: "ASSY_NO_NOT_FOUND",
-				error_detail: `Assy Number on PSN: ${rightDocCode} not found`,
+				error_detail: `Assy Number ${rawAssyNo} on PSN: ${rightDocCode} not found`,
 			},
 			trx,
 		);
@@ -421,7 +421,7 @@ class APILogger {
 				right_id: data.RIGHTID,
 				right_unique_id: data.RIGHTUNIQUEID,
 				status_code: 0,
-				message: "PARTS_NOT_COMMON_OR_SUBSTITUTE",
+				message: "PARTS_NOT_COMMON",
 				error_detail: `Left: ${data.LEFTID}, Right: ${data.RIGHTID}`,
 			},
 			trx,

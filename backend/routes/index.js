@@ -1,16 +1,16 @@
 const express = require("express");
 const router = express.Router();
 
-const machineRouter = require("./machine_ingest");
+const machineRouter = require("./machine-ingest");
 const uploadRouter = require("./upload");
 const usersRouter = require("./users");
 const authRouter = require("./auth");
 const lcrRecordsRouter = require("./machine-monitor");
-const partLibraryRouter = require("./part_library");
-const partListRouter = require("./part_list");
+const partLibraryRouter = require("./part-library");
+const partListRouter = require("./part-list");
 const componentRouter = require("./component");
 const dashboardRouter = require("./dashboard");
-const handyRouter = require("./handy_replicate");
+const handyRouter = require("./handy-replicate");
 
 router.use("/psi-aspm/machine/interface", machineRouter);
 router.use("/psi-aspm/upload", uploadRouter);
