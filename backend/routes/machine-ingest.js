@@ -141,26 +141,7 @@ async function handleCheck(req, res) {
 				.first();
 
 			if (!leftDocCode && !rightDocCode) {
-				await APILogger.logPSNMissing(
-					req.body,
-					leftDocCode,
-					rightDocCode,
-					trx,
-				);
-				return {
-					code: 0,
-					message: `\nPSN BOTH MISSING\nL:${LEFTID} | R:${RIGHTID}`,
-					data: "",
-				};
-			}
-
-			if (!leftDocCode && !rightDocCode) {
-				await APILogger.logPSNMissing(
-					req.body,
-					leftDocCode,
-					rightDocCode,
-					trx,
-				);
+				await APILogger.logPSNMissing(req.body, trx);
 				return {
 					code: 0,
 					message: `\nPSN BOTH MISSING\nL:${LEFTID} | R:${RIGHTID}`,
@@ -169,12 +150,7 @@ async function handleCheck(req, res) {
 			}
 
 			if (!leftDocCode) {
-				await APILogger.logPSNMissing(
-					req.body,
-					leftDocCode,
-					rightDocCode,
-					trx,
-				);
+				await APILogger.logPSNMissing(req.body, trx);
 				return {
 					code: 0,
 					message: `\nLEFT PSN MISSING: ${LEFTID}`,
@@ -183,12 +159,7 @@ async function handleCheck(req, res) {
 			}
 
 			if (!rightDocCode) {
-				await APILogger.logPSNMissing(
-					req.body,
-					leftDocCode,
-					rightDocCode,
-					trx,
-				);
+				await APILogger.logPSNMissing(req.body, trx);
 				return {
 					code: 0,
 					message: `\nRIGHT PSN MISSING: ${RIGHTID}`,

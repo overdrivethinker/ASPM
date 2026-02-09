@@ -374,7 +374,7 @@ class APILogger {
 		);
 	}
 
-	static async logPSNMissing(data, leftDocCode, rightDocCode, trx = null) {
+	static async logPSNMissing(data, trx = null) {
 		await this.log(
 			{
 				action: "check",
@@ -386,7 +386,7 @@ class APILogger {
 				right_unique_id: data.RIGHTUNIQUEID,
 				status_code: 0,
 				message: "MISSING_PSN",
-				error_detail: `Left: ${leftDocCode}, Right: ${rightDocCode}`,
+				error_detail: `Left: ${data.LEFTID}, Right: ${data.RIGHTID}`,
 			},
 			trx,
 		);
