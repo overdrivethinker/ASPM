@@ -224,7 +224,7 @@ async function handleCheck(req, res) {
 				// 	data: "",
 				// };
 				const getAssyNo = await trx("dbo.WMS_TLWS")
-					.where("TLWS_PSNNO", rightDocCode)
+					.where("TLWS_PSNNO", rightDocCode.SPLSCN_DOC)
 					.orderBy("TLWS_LUPDT", "asc")
 					.first();
 
@@ -235,13 +235,13 @@ async function handleCheck(req, res) {
 					await APILogger.logAssyNoNotFound(
 						req.body,
 						rawAssyNo,
-						rightDocCode,
+						rightDocCode.SPLSCN_DOC,
 						trx,
 					);
 
 					return {
 						code: 0,
-						message: `\nASSY NO:${rawAssyNo} NOT FOUND\nON PSN:${rightDocCode}`,
+						message: `\nASSY NO:${rawAssyNo} NOT FOUND\nON PSN:${rightDocCode.SPLSCN_DOC}`,
 						data: "",
 					};
 				}
