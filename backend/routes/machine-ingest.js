@@ -124,20 +124,89 @@ async function handleCheck(req, res) {
 				}
 			}
 
-			const leftDocCode = leftUniquePart.doc_code;
-			const rightDocCode = rightUniquePart.doc_code;
+			const leftDocCode = await trx("dbo.wms_v_splscn")
+				.where({
+					SPLSCN_ITMCD: LEFTID,
+					SPLSCN_UNQCODE: LEFTUNIQUEID,
+				})
+				.orderBy("SPLSCN_LUPDT", "asc")
+				.first();
 
-			if (leftDocCode !== rightDocCode) {
-				await APILogger.logPSNDifferent(
+			const rightDocCode = await trx("dbo.wms_v_splscn")
+				.where({
+					SPLSCN_ITMCD: RIGHTID,
+					SPLSCN_UNQCODE: RIGHTUNIQUEID,
+				})
+				.orderBy("SPLSCN_LUPDT", "asc")
+				.first();
+
+			if (!leftDocCode && !rightDocCode) {
+				await APILogger.logPSNMissing(
 					req.body,
 					leftDocCode,
 					rightDocCode,
 					trx,
 				);
+				return {
+					code: 0,
+					message: `\nPSN BOTH MISSING\nL:${LEFTID} | R:${RIGHTID}`,
+					data: "",
+				};
+			}
+
+			if (!leftDocCode && !rightDocCode) {
+				await APILogger.logPSNMissing(
+					req.body,
+					leftDocCode,
+					rightDocCode,
+					trx,
+				);
+				return {
+					code: 0,
+					message: `\nPSN BOTH MISSING\nL:${LEFTID} | R:${RIGHTID}`,
+					data: "",
+				};
+			}
+
+			if (!leftDocCode) {
+				await APILogger.logPSNMissing(
+					req.body,
+					leftDocCode,
+					rightDocCode,
+					trx,
+				);
+				return {
+					code: 0,
+					message: `\nLEFT PSN MISSING: ${LEFTID}`,
+					data: "",
+				};
+			}
+
+			if (!rightDocCode) {
+				await APILogger.logPSNMissing(
+					req.body,
+					leftDocCode,
+					rightDocCode,
+					trx,
+				);
+				return {
+					code: 0,
+					message: `\nRIGHT PSN MISSING: ${RIGHTID}`,
+					data: "",
+				};
+			}
+
+			if (leftDocCode.SPLSCN_DOC !== rightDocCode.SPLSCN_DOC) {
+				await APILogger.logPSNDifferent(
+					req.body,
+					leftDocCode.SPLSCN_DOC,
+					rightDocCode.SPLSCN_DOC,
+					trx,
+				);
 
 				return {
 					code: 0,
-					message: `\nPSN ARE DIFFERENT\nL DOC:${leftDocCode} |\nR DOC:${rightDocCode}`,
+					message: `\nPSN ARE DIFFERENT\nL DOC:${leftDocCode.SPLSCN_DOC} |\nR DOC:${rightDocCode.SPLSCN_DOC}`,
 					data: "",
 				};
 			}

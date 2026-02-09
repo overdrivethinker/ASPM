@@ -374,6 +374,24 @@ class APILogger {
 		);
 	}
 
+	static async logPSNMissing(data, leftDocCode, rightDocCode, trx = null) {
+		await this.log(
+			{
+				action: "check",
+				user_id: data.USERID,
+				device_name: data.DEVICENAME,
+				left_id: data.LEFTID,
+				left_unique_id: data.LEFTUNIQUEID,
+				right_id: data.RIGHTID,
+				right_unique_id: data.RIGHTUNIQUEID,
+				status_code: 0,
+				message: "MISSING_PSN",
+				error_detail: `Left: ${leftDocCode}, Right: ${rightDocCode}`,
+			},
+			trx,
+		);
+	}
+
 	static async logPSNDifferent(data, leftDocCode, rightDocCode, trx = null) {
 		await this.log(
 			{
