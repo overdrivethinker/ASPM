@@ -489,7 +489,7 @@ class APILogger {
 		} else if (invalidParts === "left") {
 			errorDetail = `Left unique invalid - L:${data.LEFTUNIQUEID}`;
 		} else {
-			errorDetail = `Right unique invalid- R:${data.RIGHTUNIQUEID}`;
+			errorDetail = `Right unique invalid - R:${data.RIGHTUNIQUEID}`;
 		}
 
 		await this.log(
