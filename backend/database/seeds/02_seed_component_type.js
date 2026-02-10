@@ -6,7 +6,9 @@ exports.seed = async function (knex) {
 		{ code: "CAP", name: "Capacitor" },
 		{ code: "IND", name: "Inductor" },
 		{ code: "IC", name: "IC" },
-		{ code: "DIODE", name: "Diode" },
+		{ code: "DIO", name: "Diode" },
 		{ code: "LED", name: "LED" },
+		{ code: "CN", name: "Connector" },
+		{ code: "TR", name: "Transistor" },
 	]);
 };

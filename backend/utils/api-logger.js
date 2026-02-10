@@ -428,6 +428,24 @@ class APILogger {
 		);
 	}
 
+	static async logSizeNotFound(data, sizeComp, trx = null) {
+		await this.log(
+			{
+				action: "check",
+				user_id: data.USERID,
+				device_name: data.DEVICENAME,
+				left_id: data.LEFTID,
+				left_unique_id: data.LEFTUNIQUEID,
+				right_id: data.RIGHTID,
+				right_unique_id: data.RIGHTUNIQUEID,
+				status_code: 0,
+				message: "COMPONENT_SIZE_NOT_FOUND",
+				error_detail: `Size ${sizeComp} not found on master data`,
+			},
+			trx,
+		);
+	}
+
 	static async logPartNotCommon(data, trx = null) {
 		await this.log(
 			{
@@ -459,6 +477,33 @@ class APILogger {
 				status_code: 0,
 				message: "PARTS_NOT_SA",
 				error_detail: `Left: ${data.LEFTID}, Right: ${data.RIGHTID}`,
+			},
+			trx,
+		);
+	}
+
+	static async logInvalidUniqueCode(data, invalidParts, trx = null) {
+		let errorDetail = "";
+		if (invalidParts === "both") {
+			errorDetail = `Both unique invalid - L:${data.LEFTUNIQUEID}, R:${data.RIGHTUNIQUEID}`;
+		} else if (invalidParts === "left") {
+			errorDetail = `Left unique invalid - L:${data.LEFTUNIQUEID}`;
+		} else {
+			errorDetail = `Right unique invalid- R:${data.RIGHTUNIQUEID}`;
+		}
+
+		await this.log(
+			{
+				action: "check",
+				user_id: data.USERID,
+				device_name: data.DEVICENAME,
+				left_id: data.LEFTID,
+				left_unique_id: data.LEFTUNIQUEID,
+				right_id: data.RIGHTID,
+				right_unique_id: data.RIGHTUNIQUEID,
+				status_code: 0,
+				message: "PART_INVALID",
+				error_detail: errorDetail,
 			},
 			trx,
 		);

@@ -75,6 +75,15 @@ router.post("/partlib", upload.single("file"), async (req, res) => {
 					componentSize = componentSize.padStart(4, "0");
 				}
 
+				const componentSizeExists = await trx("dbo.component_size")
+					.where("metric_code", componentSize)
+					.first();
+
+				if (!componentSizeExists) {
+					skipped++;
+					continue;
+				}
+
 				await trx("dbo.part_library").insert({
 					part_name: row.part_name,
 					component_type: row.component_type,

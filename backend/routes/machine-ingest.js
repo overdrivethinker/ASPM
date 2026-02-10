@@ -65,6 +65,48 @@ async function handleCheck(req, res) {
 				};
 			}
 
+			if (LEFTUNIQUEID?.length !== 16 || RIGHTUNIQUEID?.length !== 16) {
+				const invalidType =
+					LEFTUNIQUEID?.length !== 16 && RIGHTUNIQUEID?.length !== 16
+						? "both"
+						: LEFTUNIQUEID?.length !== 16
+							? "left"
+							: "right";
+
+				await APILogger.logInvalidUniqueCode(
+					req.body,
+					invalidType,
+					trx,
+				);
+
+				if (
+					LEFTUNIQUEID?.length !== 16 &&
+					RIGHTUNIQUEID?.length !== 16
+				) {
+					return {
+						code: 0,
+						message: `\nINVALID UNIQUE CODE\nL:${LEFTUNIQUEID} | R:${RIGHTUNIQUEID}`,
+						data: "",
+					};
+				}
+
+				if (LEFTUNIQUEID?.length !== 16) {
+					return {
+						code: 0,
+						message: `\nLEFT UNIQUE CODE INVALID: ${LEFTUNIQUEID}`,
+						data: "",
+					};
+				}
+
+				if (RIGHTUNIQUEID?.length !== 16) {
+					return {
+						code: 0,
+						message: `\nRIGHT UNIQUE CODE INVALID: ${RIGHTUNIQUEID}`,
+						data: "",
+					};
+				}
+			}
+
 			if (LEFTUNIQUEID == RIGHTUNIQUEID) {
 				await APILogger.logDuplicateCode(req.body, trx);
 
@@ -553,6 +595,23 @@ async function handleCheck(req, res) {
 						data: "",
 					};
 				}
+			}
+
+			const checkSize = await trx("dbo.component_size")
+				.where("metric_code", leftLibrary.component_size)
+				.first();
+
+			if (!checkSize) {
+				await APILogger.logSizeNotFound(
+					req.body,
+					leftLibrary.component_size,
+					trx,
+				);
+				return {
+					code: 0,
+					message: `COMPONENT SIZE NOT FOUND: ${leftLibrary.component_size}`,
+					data: "",
+				};
 			}
 
 			const leftDescription = `${leftLibrary.component_type}_${leftPart.value}_${leftPart.tolerance}_${leftLibrary.component_size}`;

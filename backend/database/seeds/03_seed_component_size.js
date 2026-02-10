@@ -3,6 +3,12 @@ exports.seed = async function (knex) {
 
 	await knex("component_size").insert([
 		{
+			metric_code: "0",
+			imperial_code: "0",
+			length_mm: 0,
+			width_mm: 0,
+		},
+		{
 			metric_code: "0201",
 			imperial_code: "008004",
 			length_mm: 0.25,
