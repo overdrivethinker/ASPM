@@ -70,6 +70,15 @@ router.post("/partlib", upload.single("file"), async (req, res) => {
 					continue;
 				}
 
+				let componentTypeExist = await trx("dbo.component_type")
+					.where("code", String(row.component_type))
+					.first();
+
+				if (!componentTypeExist) {
+					skipped++;
+					continue;
+				}
+
 				let componentSize = String(row.component_size);
 				if (/^\d{3,4}$/.test(componentSize)) {
 					componentSize = componentSize.padStart(4, "0");
