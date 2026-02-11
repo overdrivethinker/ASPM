@@ -4,6 +4,7 @@ const knex = require("../database/db");
 const multer = require("multer");
 const router = express.Router();
 const { processSheet, removeDuplicates } = require("../utils/parser");
+const { toWIB } = require("../utils/helpers");
 
 const upload = multer({
 	storage: multer.memoryStorage(),
@@ -39,16 +40,23 @@ router.post("/partlib", upload.single("file"), async (req, res) => {
 
 		let inserted = 0;
 		let skipped = 0;
+		const skippedRows = [];
 
 		await knex.transaction(async (trx) => {
 			for (const row of rows) {
+				let skipReason = null;
+
 				if (
 					!row.part_name ||
 					!row.component_type ||
-					!row.component_size ||
-					!row.reel_width
+					row.component_size === undefined ||
+					row.component_size === null ||
+					row.reel_width === undefined ||
+					row.reel_width === null
 				) {
+					skipReason = "Missing required fields";
 					skipped++;
+					skippedRows.push({ ...row, skip_reason: skipReason });
 					continue;
 				}
 
@@ -57,7 +65,9 @@ router.post("/partlib", upload.single("file"), async (req, res) => {
 					.first();
 
 				if (!partListExists) {
+					skipReason = "Part name not found in part_list";
 					skipped++;
+					skippedRows.push({ ...row, skip_reason: skipReason });
 					continue;
 				}
 
@@ -66,7 +76,9 @@ router.post("/partlib", upload.single("file"), async (req, res) => {
 					.first();
 
 				if (exists) {
+					skipReason = "Part already exists in library";
 					skipped++;
+					skippedRows.push({ ...row, skip_reason: skipReason });
 					continue;
 				}
 
@@ -75,11 +87,14 @@ router.post("/partlib", upload.single("file"), async (req, res) => {
 					.first();
 
 				if (!componentTypeExist) {
+					skipReason = "Component type not found";
 					skipped++;
+					skippedRows.push({ ...row, skip_reason: skipReason });
 					continue;
 				}
 
 				let componentSize = String(row.component_size);
+
 				if (/^\d{3,4}$/.test(componentSize)) {
 					componentSize = componentSize.padStart(4, "0");
 				}
@@ -89,7 +104,20 @@ router.post("/partlib", upload.single("file"), async (req, res) => {
 					.first();
 
 				if (!componentSizeExists) {
+					skipReason = "Component size not found";
 					skipped++;
+					skippedRows.push({ ...row, skip_reason: skipReason });
+					continue;
+				}
+
+				const reelWidth = await trx("dbo.reel_width")
+					.where("width_code", row.reel_width)
+					.first();
+
+				if (!reelWidth) {
+					skipReason = "Reel width not found";
+					skipped++;
+					skippedRows.push({ ...row, skip_reason: skipReason });
 					continue;
 				}
 
@@ -104,13 +132,32 @@ router.post("/partlib", upload.single("file"), async (req, res) => {
 			}
 		});
 
-		res.json({
+		const response = {
 			status: "OK",
 			file: req.file.originalname,
 			inserted,
 			skipped,
 			total: rows.length,
-		});
+		};
+
+		if (skippedRows.length > 0) {
+			const ws = xlsx.utils.json_to_sheet(skippedRows);
+			const wb = xlsx.utils.book_new();
+			xlsx.utils.book_append_sheet(wb, ws, "Skipped Data");
+
+			const csvBuffer = xlsx.write(wb, {
+				type: "buffer",
+				bookType: "csv",
+			});
+			const base64CSV = csvBuffer.toString("base64");
+
+			response.skippedFile = {
+				data: base64CSV,
+				filename: `SKIPPED_PARTS_${toWIB(new Date()).toISOString().split("T")[0].split("-").reverse().join("-")}.csv`,
+			};
+		}
+
+		res.json(response);
 	} catch (err) {
 		res.status(500).json({
 			status: "ERROR",
