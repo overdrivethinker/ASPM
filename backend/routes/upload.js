@@ -12,7 +12,7 @@ const upload = multer({
 		fileSize: 10 * 1024 * 1024,
 	},
 	fileFilter: (req, file, cb) => {
-		if (!file.originalname.match(/\.(xlsx|xls|csv)$/i)) {
+		if (!file.originalname.match(/\.(csv)$/i)) {
 			return cb(new Error("ONLY EXCEL OR CSV FILES ARE ALLOWED"));
 		}
 		cb(null, true);

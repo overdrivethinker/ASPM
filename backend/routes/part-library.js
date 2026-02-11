@@ -71,15 +71,27 @@ router.post("/", async (req, res) => {
 			return res.status(400).json({ error: "Part name is required" });
 		}
 		const existing = await knex("part_library")
-			.where("part_name", part_name.trim())
+			.where("part_name", part_name)
 			.first();
 
 		if (existing) {
-			return res.status(409).json({ error: "Part name already exists" });
+			return res
+				.status(409)
+				.json({ error: "Part library already exists" });
+		}
+
+		const partListExist = await knex("part_list")
+			.where("part_name", part_name)
+			.first();
+
+		if (!partListExist) {
+			return res
+				.status(409)
+				.json({ error: "Part name not exists in part list" });
 		}
 
 		const [part_id] = await knex("part_library").insert({
-			part_name: part_name.trim(),
+			part_name: part_name,
 			component_type: component_type?.trim() || null,
 			component_size: component_size?.trim() || null,
 			reel_width: reel_width?.trim() || null,
@@ -89,7 +101,7 @@ router.post("/", async (req, res) => {
 			message: "Part created successfully",
 			data: {
 				part_id,
-				part_name: part_name.trim(),
+				part_name: part_name,
 				component_type: component_type?.trim() || null,
 				component_size: component_size?.trim() || null,
 				reel_width: reel_width?.trim() || null,
