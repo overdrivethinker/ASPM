@@ -12,19 +12,93 @@ router.get("/overview", async (req, res) => {
 		const [
 			partLibraryTotal,
 			partListTotal,
-			partListWithValueAndTolerance,
+			countMissingValueTolerance,
 			lcrStats,
 		] = await Promise.all([
 			knex("part_library").count("* as count").first(),
 
 			knex("part_list").count("* as count").first(),
 
-			knex("part_list")
+			knex("part_library as pl")
+				.leftJoin(
+					"part_list as plist",
+					"pl.part_name",
+					"plist.part_name",
+				)
+				.where(function () {
+					this.where(function () {
+						this.whereIn("pl.component_type", ["RES", "CAP"])
+							.andWhere(function () {
+								this.whereNull("plist.value")
+									.orWhereNull("plist.tolerance")
+									.orWhere("plist.value", "")
+									.orWhere("plist.tolerance", "");
+							})
+							.andWhere(function () {
+								this.where(function () {
+									this.whereNull("plist.specification");
+								}).andWhere(function () {
+									this.where(
+										"plist.specification",
+										"like",
+										"%OHM%",
+									)
+										.orWhere(
+											"plist.specification",
+											"like",
+											"%KOHM%",
+										)
+										.orWhere(
+											"plist.specification",
+											"like",
+											"%MOHM%",
+										)
+										.orWhere(
+											"plist.specification",
+											"like",
+											"%PF%",
+										)
+										.orWhere(
+											"plist.specification",
+											"like",
+											"%NF%",
+										)
+										.orWhere(
+											"plist.specification",
+											"like",
+											"%UF%",
+										)
+										.orWhere(
+											"plist.specification",
+											"like",
+											"%MF%",
+										);
+								});
+							});
+					}).orWhere(function () {
+						this.whereNotIn("pl.component_type", [
+							"RES",
+							"CAP",
+						]).andWhere(function () {
+							this.where("plist.specification", "like", "%OHM%")
+								.orWhere(
+									"plist.specification",
+									"like",
+									"%KOHM%",
+								)
+								.orWhere(
+									"plist.specification",
+									"like",
+									"%MOHM%",
+								)
+								.orWhere("plist.specification", "like", "%PF%")
+								.orWhere("plist.specification", "like", "%NF%")
+								.orWhere("plist.specification", "like", "%UF%")
+								.orWhere("plist.specification", "like", "%MF%");
+						});
+					});
+				})
 				.count("* as count")
-				.whereNotNull("value")
-				.where("value", "!=", "")
-				.whereNotNull("tolerance")
-				.where("tolerance", "!=", "")
 				.first(),
 
 			knex("LCR_records")
@@ -41,6 +115,17 @@ router.get("/overview", async (req, res) => {
 				.first(),
 		]);
 
+		const totalPartLibrary = Number(partLibraryTotal?.count || 0);
+		const missingCount = Number(countMissingValueTolerance?.count || 0);
+		const validCount = Math.max(
+			Number(partListTotal?.count || 0) - missingCount,
+			0,
+		);
+
+		const validPercentage = totalPartLibrary
+			? +((validCount / totalPartLibrary) * 100).toFixed(2)
+			: 0;
+
 		const totalTests = Number(lcrStats?.totalTests || 0);
 		const passCount = Number(lcrStats?.passCount || 0);
 		const failCount = Number(lcrStats?.failCount || 0);
@@ -51,11 +136,15 @@ router.get("/overview", async (req, res) => {
 		res.json({
 			success: true,
 			data: {
-				partLibraryTotal: Number(partLibraryTotal?.count || 0),
+				partLibraryTotal: totalPartLibrary,
 				partListTotal: Number(partListTotal?.count || 0),
-				partListWithValueAndTolerance: Number(
-					partListWithValueAndTolerance?.count || 0,
-				),
+
+				valueToleranceStatus: {
+					validCount,
+					missingCount,
+					validPercentage,
+				},
+
 				lcr: {
 					totalTests,
 					passCount,

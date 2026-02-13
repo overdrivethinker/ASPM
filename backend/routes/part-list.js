@@ -211,23 +211,78 @@ router.get("/check/missing-value", async (req, res) => {
 		const countResult = await knex("part_library as pl")
 			.leftJoin("part_list as plist", "pl.part_name", "plist.part_name")
 			.where(function () {
-				this.where("pl.component_type", "RES").orWhere(
-					"pl.component_type",
-					"CAP",
-				);
-			})
-			.where(function () {
-				this.whereNull("plist.value")
-					.orWhereNull("plist.tolerance")
-					.orWhere("plist.value", "")
-					.orWhere("plist.tolerance", "");
-			})
-			.where(function () {
-				this.whereNull("plist.specification").orWhere(
-					"plist.specification",
-					"not like",
-					"%BM%",
-				);
+				this.where(function () {
+					this.where(function () {
+						this.where("pl.component_type", "RES").orWhere(
+							"pl.component_type",
+							"CAP",
+						);
+					})
+						.where(function () {
+							this.whereNull("plist.value")
+								.orWhereNull("plist.tolerance")
+								.orWhere("plist.value", "")
+								.orWhere("plist.tolerance", "");
+						})
+						.where(function () {
+							this.where(function () {
+								this.whereNull("plist.specification").orWhere(
+									"plist.specification",
+									"not like",
+									"%BM%",
+								);
+							}).orWhere(function () {
+								this.where(
+									"plist.specification",
+									"like",
+									"%OHM%",
+								)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%PF%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%KOHM%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%UF%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%MOHM%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%NF%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%MF%",
+									);
+							});
+						});
+				}).orWhere(function () {
+					this.whereNotIn("pl.component_type", [
+						"RES",
+						"CAP",
+					]).andWhere(function () {
+						this.where("plist.specification", "like", "%OHM%")
+							.orWhere("plist.specification", "like", "%KOHM%")
+							.orWhere("plist.specification", "like", "%MOHM%")
+							.orWhere("plist.specification", "like", "%PF%")
+							.orWhere("plist.specification", "like", "%NF%")
+							.orWhere("plist.specification", "like", "%UF%")
+							.orWhere("plist.specification", "like", "%MF%");
+					});
+				});
 			})
 			.count("* as count")
 			.first();
@@ -237,23 +292,78 @@ router.get("/check/missing-value", async (req, res) => {
 		const data = await knex("part_library as pl")
 			.leftJoin("part_list as plist", "pl.part_name", "plist.part_name")
 			.where(function () {
-				this.where("pl.component_type", "RES").orWhere(
-					"pl.component_type",
-					"CAP",
-				);
-			})
-			.where(function () {
-				this.whereNull("plist.value")
-					.orWhereNull("plist.tolerance")
-					.orWhere("plist.value", "")
-					.orWhere("plist.tolerance", "");
-			})
-			.where(function () {
-				this.whereNull("plist.specification").orWhere(
-					"plist.specification",
-					"not like",
-					"%BM%",
-				);
+				this.where(function () {
+					this.where(function () {
+						this.where("pl.component_type", "RES").orWhere(
+							"pl.component_type",
+							"CAP",
+						);
+					})
+						.where(function () {
+							this.whereNull("plist.value")
+								.orWhereNull("plist.tolerance")
+								.orWhere("plist.value", "")
+								.orWhere("plist.tolerance", "");
+						})
+						.where(function () {
+							this.where(function () {
+								this.whereNull("plist.specification").orWhere(
+									"plist.specification",
+									"not like",
+									"%BM%",
+								);
+							}).orWhere(function () {
+								this.where(
+									"plist.specification",
+									"like",
+									"%OHM%",
+								)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%PF%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%KOHM%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%UF%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%MOHM%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%NF%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%MF%",
+									);
+							});
+						});
+				}).orWhere(function () {
+					this.whereNotIn("pl.component_type", [
+						"RES",
+						"CAP",
+					]).andWhere(function () {
+						this.where("plist.specification", "like", "%OHM%")
+							.orWhere("plist.specification", "like", "%KOHM%")
+							.orWhere("plist.specification", "like", "%MOHM%")
+							.orWhere("plist.specification", "like", "%PF%")
+							.orWhere("plist.specification", "like", "%NF%")
+							.orWhere("plist.specification", "like", "%UF%")
+							.orWhere("plist.specification", "like", "%MF%");
+					});
+				});
 			})
 			.select(
 				"pl.part_id as library_part_id",
@@ -368,23 +478,78 @@ router.get("/check/summary", async (req, res) => {
 		const countMissingValueTolerance = await knex("part_library as pl")
 			.leftJoin("part_list as plist", "pl.part_name", "plist.part_name")
 			.where(function () {
-				this.where("pl.component_type", "RES").orWhere(
-					"pl.component_type",
-					"CAP",
-				);
-			})
-			.where(function () {
-				this.whereNull("plist.value")
-					.orWhereNull("plist.tolerance")
-					.orWhere("plist.value", "")
-					.orWhere("plist.tolerance", "");
-			})
-			.where(function () {
-				this.whereNull("plist.specification").orWhere(
-					"plist.specification",
-					"not like",
-					"%BM%",
-				);
+				this.where(function () {
+					this.where(function () {
+						this.where("pl.component_type", "RES").orWhere(
+							"pl.component_type",
+							"CAP",
+						);
+					})
+						.where(function () {
+							this.whereNull("plist.value")
+								.orWhereNull("plist.tolerance")
+								.orWhere("plist.value", "")
+								.orWhere("plist.tolerance", "");
+						})
+						.where(function () {
+							this.where(function () {
+								this.whereNull("plist.specification").orWhere(
+									"plist.specification",
+									"not like",
+									"%BM%",
+								);
+							}).orWhere(function () {
+								this.where(
+									"plist.specification",
+									"like",
+									"%OHM%",
+								)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%PF%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%KOHM%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%UF%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%MOHM%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%NF%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%MF%",
+									);
+							});
+						});
+				}).orWhere(function () {
+					this.whereNotIn("pl.component_type", [
+						"RES",
+						"CAP",
+					]).andWhere(function () {
+						this.where("plist.specification", "like", "%OHM%")
+							.orWhere("plist.specification", "like", "%KOHM%")
+							.orWhere("plist.specification", "like", "%MOHM%")
+							.orWhere("plist.specification", "like", "%PF%")
+							.orWhere("plist.specification", "like", "%NF%")
+							.orWhere("plist.specification", "like", "%UF%")
+							.orWhere("plist.specification", "like", "%MF%");
+					});
+				});
 			})
 			.count("* as count")
 			.first();
@@ -425,23 +590,78 @@ router.get("/check/missing-value/export", async (req, res) => {
 		const data = await knex("part_library as pl")
 			.leftJoin("part_list as plist", "pl.part_name", "plist.part_name")
 			.where(function () {
-				this.where("pl.component_type", "RES").orWhere(
-					"pl.component_type",
-					"CAP",
-				);
-			})
-			.where(function () {
-				this.whereNull("plist.value")
-					.orWhereNull("plist.tolerance")
-					.orWhere("plist.value", "")
-					.orWhere("plist.tolerance", "");
-			})
-			.where(function () {
-				this.whereNull("plist.specification").orWhere(
-					"plist.specification",
-					"not like",
-					"%BM%",
-				);
+				this.where(function () {
+					this.where(function () {
+						this.where("pl.component_type", "RES").orWhere(
+							"pl.component_type",
+							"CAP",
+						);
+					})
+						.where(function () {
+							this.whereNull("plist.value")
+								.orWhereNull("plist.tolerance")
+								.orWhere("plist.value", "")
+								.orWhere("plist.tolerance", "");
+						})
+						.where(function () {
+							this.where(function () {
+								this.whereNull("plist.specification").orWhere(
+									"plist.specification",
+									"not like",
+									"%BM%",
+								);
+							}).orWhere(function () {
+								this.where(
+									"plist.specification",
+									"like",
+									"%OHM%",
+								)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%PF%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%KOHM%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%UF%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%MOHM%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%NF%",
+									)
+									.orWhere(
+										"plist.specification",
+										"like",
+										"%MF%",
+									);
+							});
+						});
+				}).orWhere(function () {
+					this.whereNotIn("pl.component_type", [
+						"RES",
+						"CAP",
+					]).andWhere(function () {
+						this.where("plist.specification", "like", "%OHM%")
+							.orWhere("plist.specification", "like", "%KOHM%")
+							.orWhere("plist.specification", "like", "%MOHM%")
+							.orWhere("plist.specification", "like", "%PF%")
+							.orWhere("plist.specification", "like", "%NF%")
+							.orWhere("plist.specification", "like", "%UF%")
+							.orWhere("plist.specification", "like", "%MF%");
+					});
+				});
 			})
 			.select(
 				"plist.part_number",
