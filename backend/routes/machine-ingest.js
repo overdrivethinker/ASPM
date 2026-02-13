@@ -298,7 +298,7 @@ async function handleCheck(req, res) {
 				if (!checkCommonPart) {
 					await APILogger.logPartNotCommon(req.body, trx);
 
-					await sendAlert(line, spid, no, "active");
+					// await sendAlert(line, spid, no, "active");
 
 					return {
 						code: 0,
@@ -329,7 +329,7 @@ async function handleCheck(req, res) {
 				if (!checkSAParts) {
 					await APILogger.logPartNotSA(req.body, trx);
 
-					await sendAlert(line, spid, no, "active");
+					// await sendAlert(line, spid, no, "active");
 
 					return {
 						code: 0,
