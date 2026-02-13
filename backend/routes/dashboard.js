@@ -26,77 +26,117 @@ router.get("/overview", async (req, res) => {
 					"plist.part_name",
 				)
 				.where(function () {
-					this.where(function () {
-						this.whereIn("pl.component_type", ["RES", "CAP"])
-							.andWhere(function () {
-								this.whereNull("plist.value")
-									.orWhereNull("plist.tolerance")
-									.orWhere("plist.value", "")
-									.orWhere("plist.tolerance", "");
+					this.where("pl.component_type", "!=", "HW").andWhere(
+						function () {
+							this.where(function () {
+								this.whereIn("pl.component_type", [
+									"RES",
+									"CAP",
+								])
+									.andWhere(function () {
+										this.whereNull("plist.value")
+											.orWhereNull("plist.tolerance")
+											.orWhere("plist.value", "")
+											.orWhere("plist.tolerance", "");
+									})
+									.andWhere(function () {
+										this.whereNull(
+											"plist.specification",
+										).orWhereRaw(
+											"plist.specification NOT LIKE ?",
+											["%BM%"],
+										);
+									});
 							})
-							.andWhere(function () {
-								this.where(function () {
-									this.whereNull("plist.specification");
-								}).andWhere(function () {
-									this.where(
-										"plist.specification",
-										"like",
-										"%OHM%",
-									)
-										.orWhere(
-											"plist.specification",
-											"like",
-											"%KOHM%",
+								.orWhere(function () {
+									this.where(function () {
+										this.whereRaw(
+											"plist.specification LIKE '%[0-9]PF%'",
 										)
-										.orWhere(
-											"plist.specification",
-											"like",
-											"%MOHM%",
+											.orWhereRaw(
+												"plist.specification LIKE '%[0-9]PF[,;%]%'",
+											)
+											.orWhereRaw(
+												"plist.specification LIKE '% PF%'",
+											)
+											.orWhereRaw(
+												"plist.specification LIKE '%[0-9]NF%'",
+											)
+											.orWhereRaw(
+												"plist.specification LIKE '%[0-9]NF[,;%]%'",
+											)
+											.orWhereRaw(
+												"plist.specification LIKE '% NF%'",
+											)
+											.orWhereRaw(
+												"plist.specification LIKE '%[0-9]UF%'",
+											)
+											.orWhereRaw(
+												"plist.specification LIKE '%[0-9]UF[,;%]%'",
+											)
+											.orWhereRaw(
+												"plist.specification LIKE '% UF%'",
+											)
+											.orWhereRaw(
+												"plist.specification LIKE '%[0-9]MF%'",
+											)
+											.orWhereRaw(
+												"plist.specification LIKE '%[0-9]MF[,;%]%'",
+											)
+											.orWhereRaw(
+												"plist.specification LIKE '% MF%'",
+											);
+									})
+										.whereNotIn("pl.component_type", [
+											"CAP",
+											"CM",
+										])
+										.whereRaw(
+											"plist.specification NOT LIKE ?",
+											["%BM%"],
+										);
+								})
+								.orWhere(function () {
+									this.where(function () {
+										this.whereRaw(
+											"plist.specification LIKE '%[0-9]OHM%'",
 										)
-										.orWhere(
-											"plist.specification",
-											"like",
-											"%PF%",
-										)
-										.orWhere(
-											"plist.specification",
-											"like",
-											"%NF%",
-										)
-										.orWhere(
-											"plist.specification",
-											"like",
-											"%UF%",
-										)
-										.orWhere(
-											"plist.specification",
-											"like",
-											"%MF%",
+											.orWhereRaw(
+												"plist.specification LIKE '%[0-9]OHM[,;%]%'",
+											)
+											.orWhereRaw(
+												"plist.specification LIKE '% OHM%'",
+											)
+											.orWhereRaw(
+												"plist.specification LIKE '%[0-9]KOHM%'",
+											)
+											.orWhereRaw(
+												"plist.specification LIKE '%[0-9]KOHM[,;%]%'",
+											)
+											.orWhereRaw(
+												"plist.specification LIKE '% KOHM%'",
+											)
+											.orWhereRaw(
+												"plist.specification LIKE '%[0-9]MOHM%'",
+											)
+											.orWhereRaw(
+												"plist.specification LIKE '%[0-9]MOHM[,;%]%'",
+											)
+											.orWhereRaw(
+												"plist.specification LIKE '% MOHM%'",
+											);
+									})
+										.whereNotIn("pl.component_type", [
+											"RES",
+											"RM",
+										])
+										.whereRaw(
+											"plist.specification NOT LIKE ?",
+											["%BM%"],
 										);
 								});
-							});
-					}).orWhere(function () {
-						this.whereNotIn("pl.component_type", [
-							"RES",
-							"CAP",
-						]).andWhere(function () {
-							this.where("plist.specification", "like", "%OHM%")
-								.orWhere(
-									"plist.specification",
-									"like",
-									"%KOHM%",
-								)
-								.orWhere(
-									"plist.specification",
-									"like",
-									"%MOHM%",
-								)
-								.orWhere("plist.specification", "like", "%PF%")
-								.orWhere("plist.specification", "like", "%NF%")
-								.orWhere("plist.specification", "like", "%UF%")
-								.orWhere("plist.specification", "like", "%MF%");
-						});
-					});
+						},
+					);
 				})
 				.count("* as count")
 				.first(),
