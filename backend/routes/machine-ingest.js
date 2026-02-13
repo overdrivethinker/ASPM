@@ -1,7 +1,33 @@
+require("dotenv").config({ path: __dirname + "/../.env" });
 const express = require("express");
 const router = express.Router();
 const knex = require("../database/db");
 const APILogger = require("../utils/api-logger");
+const cmas_enabled = process.env.CMAS_ENABLED === "true";
+const cmas_endpoint = process.env.CMAS_ENDPOINT;
+
+async function sendAlert(line, spid, no, status = "active") {
+	if (!cmas_enabled) {
+		return;
+	}
+
+	try {
+		await fetch(cmas_endpoint, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				line: line,
+				status: status,
+				spid: spid,
+				no: no,
+			}),
+		});
+	} catch (error) {
+		console.error("Failed to send alert:", error);
+	}
+}
 
 router.get("/", (req, res) => {
 	res.send("CONNECTED TO PSI-ASPM API INTERFACE");
@@ -229,35 +255,28 @@ async function handleCheck(req, res) {
 			let isSA = false;
 
 			if (LEFTID != RIGHTID) {
-				// await APILogger.logPartsDifferent(req.body, trx);
-
-				// return {
-				// 	code: 0,
-				// 	message: "\nPARTS ARE DIFFERENT",
-				// 	data: "",
-				// };
-				const getAssyNo = await trx("dbo.WMS_TLWS")
+				const tlws = await trx("dbo.WMS_TLWS")
 					.where("TLWS_PSNNO", rightDocCode.SPLSCN_DOC)
 					.orderBy("TLWS_LUPDT", "asc")
 					.first();
 
-				const rawAssyNo = getAssyNo.TLWS_MDLCD;
-				const assyNo = rawAssyNo.slice(0, 7) + "-" + rawAssyNo.slice(7);
-
-				if (!rawAssyNo) {
-					await APILogger.logAssyNoNotFound(
-						req.body,
-						rawAssyNo,
-						rightDocCode.SPLSCN_DOC,
-						trx,
-					);
-
+				if (!tlws) {
+					await APILogger.logAltPartNotFound(req.body, trx);
 					return {
 						code: 0,
-						message: `\nASSY NO:${rawAssyNo} NOT FOUND\nON PSN:${rightDocCode.SPLSCN_DOC}`,
+						message: `\nALTERNATIVE PART NOT FOUND\nFOR PART:${LEFTID} & ${RIGHTID}`,
 						data: "",
 					};
 				}
+
+				const line = tlws.TLWS_LINENO;
+				const spid = tlws.TLWS_SPID;
+				const no = DEVICENAME;
+
+				console.log(line, spid, no);
+
+				const rawAssyNo = tlws.TLWS_MDLCD;
+				const assyNo = rawAssyNo.slice(0, 7) + "-" + rawAssyNo.slice(7);
 
 				const checkCommonPart = await trx("dbo.ENG_COMM_SUB_PART")
 					.where("[ASSY CODE]", assyNo)
@@ -278,6 +297,8 @@ async function handleCheck(req, res) {
 
 				if (!checkCommonPart) {
 					await APILogger.logPartNotCommon(req.body, trx);
+
+					await sendAlert(line, spid, no, "active");
 
 					return {
 						code: 0,
@@ -307,6 +328,8 @@ async function handleCheck(req, res) {
 
 				if (!checkSAParts) {
 					await APILogger.logPartNotSA(req.body, trx);
+
+					await sendAlert(line, spid, no, "active");
 
 					return {
 						code: 0,

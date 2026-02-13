@@ -410,7 +410,7 @@ class APILogger {
 		);
 	}
 
-	static async logAssyNotFound(data, rawAssyNo, rightDocCode, trx = null) {
+	static async logAltPartNotFound(data, trx = null) {
 		await this.log(
 			{
 				action: "check",
@@ -421,8 +421,8 @@ class APILogger {
 				right_id: data.RIGHTID,
 				right_unique_id: data.RIGHTUNIQUEID,
 				status_code: 0,
-				message: "ASSY_NO_NOT_FOUND",
-				error_detail: `Assy Number ${rawAssyNo} on PSN: ${rightDocCode} not found`,
+				message: "ALT_PART_NOT_FOUND",
+				error_detail: `Left: ${data.LEFTID}, Right: ${data.RIGHTID}`,
 			},
 			trx,
 		);
