@@ -9,12 +9,6 @@ exports.seed = async function (knex) {
 			width_mm: 0,
 		},
 		{
-			metric_code: "0201",
-			imperial_code: "008004",
-			length_mm: 0.25,
-			width_mm: 0.125,
-		},
-		{
 			metric_code: "0402",
 			imperial_code: "01005",
 			length_mm: 0.4,
@@ -45,6 +39,12 @@ exports.seed = async function (knex) {
 			width_mm: 1.25,
 		},
 		{
+			metric_code: "2520",
+			imperial_code: "1008",
+			length_mm: 2.5,
+			width_mm: 2.0,
+		},
+		{
 			metric_code: "3216",
 			imperial_code: "1206",
 			length_mm: 3.2,
@@ -57,16 +57,34 @@ exports.seed = async function (knex) {
 			width_mm: 2.5,
 		},
 		{
+			metric_code: "4516",
+			imperial_code: "1806",
+			length_mm: 4.5,
+			width_mm: 1.6,
+		},
+		{
 			metric_code: "4532",
 			imperial_code: "1812",
 			length_mm: 4.5,
 			width_mm: 3.2,
 		},
 		{
+			metric_code: "5025",
+			imperial_code: "2010",
+			length_mm: 5.0,
+			width_mm: 2.5,
+		},
+		{
 			metric_code: "5750",
 			imperial_code: "2220",
 			length_mm: 5.7,
 			width_mm: 5.0,
+		},
+		{
+			metric_code: "6332",
+			imperial_code: "2512",
+			length_mm: 6.3,
+			width_mm: 3.2,
 		},
 	]);
 };
