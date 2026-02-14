@@ -12,12 +12,16 @@ router.get("/overview", async (req, res) => {
 		const [
 			partLibraryTotal,
 			partListTotal,
+			partListUnique,
 			countMissingValueTolerance,
 			lcrStats,
 		] = await Promise.all([
 			knex("part_library").count("* as count").first(),
 
 			knex("part_list").count("* as count").first(),
+
+			// Hitung unique part_name di part_list
+			knex("part_list").countDistinct("part_name as count").first(),
 
 			knex("part_library as pl")
 				.leftJoin(
@@ -138,7 +142,7 @@ router.get("/overview", async (req, res) => {
 						},
 					);
 				})
-				.count("* as count")
+				.countDistinct("pl.part_name as count")
 				.first(),
 
 			knex("LCR_records")
@@ -156,11 +160,12 @@ router.get("/overview", async (req, res) => {
 		]);
 
 		const totalPartLibrary = Number(partLibraryTotal?.count || 0);
+		const totalPartList = Number(partListTotal?.count || 0);
+		const uniquePartList = Number(partListUnique?.count || 0);
+		const duplicateRowCount = totalPartList - uniquePartList; // Hitung dari selisih
+
 		const missingCount = Number(countMissingValueTolerance?.count || 0);
-		const validCount = Math.max(
-			Number(partListTotal?.count || 0) - missingCount,
-			0,
-		);
+		const validCount = Math.max(uniquePartList - missingCount, 0);
 
 		const validPercentage = totalPartLibrary
 			? +((validCount / totalPartLibrary) * 100).toFixed(2)
@@ -177,7 +182,9 @@ router.get("/overview", async (req, res) => {
 			success: true,
 			data: {
 				partLibraryTotal: totalPartLibrary,
-				partListTotal: Number(partListTotal?.count || 0),
+				partListTotal: totalPartList,
+				partListUnique: uniquePartList,
+				partListDuplicate: duplicateRowCount,
 
 				valueToleranceStatus: {
 					validCount,

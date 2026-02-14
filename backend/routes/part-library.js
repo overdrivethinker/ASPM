@@ -5,7 +5,7 @@ const { toWIB } = require("../utils/helpers");
 
 router.get("/", async (req, res) => {
 	try {
-		const { page = 1, limit = 15, search = "" } = req.query;
+		const { page = 1, limit = 17, search = "" } = req.query;
 
 		const parsedPage = parseInt(page);
 		const parsedLimit = parseInt(limit);

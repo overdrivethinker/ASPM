@@ -12,7 +12,7 @@ dayjs.extend(timezone);
 
 router.get("/", async (req, res) => {
 	try {
-		const { page = 1, limit = 15, search = "" } = req.query;
+		const { page = 1, limit = 17, search = "" } = req.query;
 		const parsedLimit = parseInt(limit);
 		const parsedPage = parseInt(page);
 		const offset = (parsedPage - 1) * parsedLimit;
