@@ -49,7 +49,7 @@ router.get("/type", async (req, res) => {
 	try {
 		const data = await knex("component_type")
 			.select("id", "code", "name")
-			.orderBy("id", "asc");
+			.orderBy("code", "asc");
 
 		res.json({
 			success: true,

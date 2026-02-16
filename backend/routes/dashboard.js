@@ -15,12 +15,14 @@ router.get("/overview", async (req, res) => {
 			partListUnique,
 			countMissingValueTolerance,
 			lcrStats,
+			uniqueComponentTypes,
+			uniqueComponentSizes,
+			uniqueReelWidths,
 		] = await Promise.all([
 			knex("part_library").count("* as count").first(),
 
 			knex("part_list").count("* as count").first(),
 
-			// Hitung unique part_name di part_list
 			knex("part_list").countDistinct("part_name as count").first(),
 
 			knex("part_library as pl")
@@ -157,12 +159,22 @@ router.get("/overview", async (req, res) => {
 					),
 				)
 				.first(),
+
+			knex("part_library")
+				.countDistinct("component_type as count")
+				.first(),
+
+			knex("part_library")
+				.countDistinct("component_size as count")
+				.first(),
+
+			knex("part_library").countDistinct("reel_width as count").first(),
 		]);
 
 		const totalPartLibrary = Number(partLibraryTotal?.count || 0);
 		const totalPartList = Number(partListTotal?.count || 0);
 		const uniquePartList = Number(partListUnique?.count || 0);
-		const duplicateRowCount = totalPartList - uniquePartList; // Hitung dari selisih
+		const duplicateRowCount = totalPartList - uniquePartList;
 
 		const missingCount = Number(countMissingValueTolerance?.count || 0);
 		const validCount = Math.max(uniquePartList - missingCount, 0);
@@ -197,6 +209,12 @@ router.get("/overview", async (req, res) => {
 					passCount,
 					failCount,
 					passRate,
+				},
+
+				uniqueCounts: {
+					componentTypes: Number(uniqueComponentTypes?.count || 0),
+					componentSizes: Number(uniqueComponentSizes?.count || 0),
+					reelWidths: Number(uniqueReelWidths?.count || 0),
 				},
 			},
 		});
