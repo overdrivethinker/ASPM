@@ -374,7 +374,15 @@ class APILogger {
 		);
 	}
 
-	static async logPSNMissing(data, trx = null) {
+	static async logPSNMissing(data, missingPSN, trx = null) {
+		let errorDetail = "";
+		if (missingPSN === "both") {
+			errorDetail = `Both PSN missing - L:${data.LEFTID}, R:${data.RIGHTID}`;
+		} else if (missingPSN === "left") {
+			errorDetail = `Left PSN missing - L:${data.LEFTID}`;
+		} else {
+			errorDetail = `Right PSN missing - R:${data.RIGHTID}`;
+		}
 		await this.log(
 			{
 				action: "check",
@@ -386,7 +394,7 @@ class APILogger {
 				right_unique_id: data.RIGHTUNIQUEID,
 				status_code: 0,
 				message: "MISSING_PSN",
-				error_detail: `Left: ${data.LEFTID}, Right: ${data.RIGHTID}`,
+				error_detail: errorDetail,
 			},
 			trx,
 		);
