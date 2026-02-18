@@ -5,6 +5,8 @@ const knex = require("../database/db");
 const APILogger = require("../utils/api-logger");
 const cmas_enabled = process.env.CMAS_ENABLED === "true";
 const cmas_endpoint = process.env.CMAS_ENDPOINT;
+const swps_enabled = process.env.SWPS_ENABLED === "true";
+const swps_endpoint = process.env.SWPS_ENDPOINT;
 const axios = require("axios");
 
 async function sendAlert(line, spid, no, status = "active") {
@@ -13,20 +15,74 @@ async function sendAlert(line, spid, no, status = "active") {
 	}
 
 	try {
-		await fetch(cmas_endpoint, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({
-				line: line,
-				status: status,
-				spid: spid,
-				no: no,
-			}),
+		await axios.post(cmas_endpoint, {
+			line,
+			status,
+			spid,
+			no,
 		});
 	} catch (error) {
-		console.error("Failed to send alert:", error);
+		console.error("Failed to send alert:", error.message);
+	}
+}
+
+async function storeSWPS({
+	woNo,
+	proc,
+	lineName,
+	mcMcZItm,
+	RIGHTID,
+	rightLotNumber,
+	LEFTID,
+	leftLotNumber,
+	rightQty,
+	leftQty,
+	RIGHTUNIQUEID,
+	LEFTUNIQUEID,
+	psnNo,
+	jobNo,
+	spid,
+	mc,
+	mcz,
+	rawAssyNo,
+	bomRev,
+	mainItmCd,
+	USERID,
+	finalResult,
+}) {
+	if (!swps_enabled) {
+		return;
+	}
+
+	try {
+		await axios.post(swps_endpoint, {
+			SWPS_WONO: woNo,
+			SWPS_PROCD: proc,
+			SWPS_LINENO: lineName,
+			SWPS_MCMCZITM: mcMcZItm,
+			SWPS_ITMCD: RIGHTID,
+			SWPS_LOTNO: rightLotNumber,
+			SWPS_NITMCD: LEFTID,
+			SWPS_NLOTNO: leftLotNumber,
+			SWPS_REMQT: 0,
+			SWPS_LUPDT: new Date().toISOString(),
+			SWPS_LUPBY: USERID,
+			SWPS_REMARK: finalResult,
+			QTY: rightQty,
+			NQTY: leftQty,
+			SWPS_UNQ: RIGHTUNIQUEID,
+			SWPS_NUNQ: LEFTUNIQUEID,
+			SWPS_PSNNO: psnNo,
+			SWPS_JOBNO: jobNo,
+			SWPS_SPID: spid,
+			SWPS_MC: mc,
+			SWPS_MCZ: mcz,
+			SWPS_MDLCD: rawAssyNo,
+			SWPS_BOMRV: bomRev,
+			SWPS_MAINITMCD: mainItmCd,
+		});
+	} catch (error) {
+		console.error("Failed to store SWPS:", error.message);
 	}
 }
 
@@ -803,45 +859,35 @@ async function handleSave(req, res) {
 			const rawAssyNo = tlws.TLWS_MDLCD;
 			const bomRev = tlws.TLWS_BOMRV;
 
-			const payload = {
-				SWPS_WONO: woNo,
-				SWPS_PROCD: proc,
-				SWPS_LINENO: lineName,
-				SWPS_MCMCZITM: "YOUNGPOOL GAK PAKE FL",
-				SWPS_ITMCD: RIGHTID,
-				SWPS_LOTNO: rightLotNumber,
-				SWPS_NITMCD: LEFTID,
-				SWPS_NLOTNO: leftLotNumber,
-				SWPS_REMQT: 0,
-				SWPS_LUPDT: new Date().toISOString(),
-				SWPS_LUPBY: USERID,
-				SWPS_REMARK: finalResult,
-				QTY: rightQty,
-				NQTY: leftQty,
-				SWPS_UNQ: RIGHTUNIQUEID,
-				SWPS_NUNQ: LEFTUNIQUEID,
-				SWPS_PSNNO: psnNo,
-				SWPS_JOBNO: jobNo,
-				SWPS_SPID: spid,
-				SWPS_MC: "YOUNGPOOL GAK PAKE FL",
-				SWPS_MCZ: "YOUNGPOOL GAK PAKE FL",
-				SWPS_MDLCD: rawAssyNo,
-				SWPS_BOMRV: bomRev,
-				SWPS_MAINITMCD: "YOUNGPOOL GAK PAKE FL",
-			};
+			const machineItem = "YOUNGPOOL GAK PAKE FL";
+			const machineCode = "YOUNGPOOL GAK PAKE FL";
+			const machineZone = "YOUNGPOOL GAK PAKE FL";
+			const mainItemCode = "YOUNGPOOL GAK PAKE FL";
 
-			try {
-				const response = await axios.post(
-					"http://127.0.0.1:8000/api/production/store-swps",
-					payload,
-					{ headers: { "Content-Type": "application/json" } },
-				);
-			} catch (error) {
-				console.error(
-					error.response ? error.response.data : error.message,
-				);
-				throw error;
-			}
+			await storeSWPS({
+				woNo,
+				proc,
+				lineName,
+				mcMcZItm: machineItem,
+				RIGHTID,
+				rightLotNumber,
+				LEFTID,
+				leftLotNumber,
+				rightQty,
+				leftQty,
+				RIGHTUNIQUEID,
+				LEFTUNIQUEID,
+				psnNo,
+				jobNo,
+				spid,
+				mc: machineCode,
+				mcz: machineZone,
+				rawAssyNo,
+				bomRev,
+				mainItmCd: mainItemCode,
+				USERID,
+				finalResult,
+			});
 
 			await APILogger.logSaveSuccess(req.body, finalResult, trx);
 		});
