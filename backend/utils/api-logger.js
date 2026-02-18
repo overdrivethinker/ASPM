@@ -418,7 +418,15 @@ class APILogger {
 		);
 	}
 
-	static async logAltPartNotFound(data, trx = null) {
+	static async logAltPartNotFound(data, missingDoc, trx = null) {
+		let errorDetail = "";
+		if (missingDoc === "both") {
+			errorDetail = `Both non-production parts - L:${data.LEFTUNIQUEID}, R:${data.RIGHTUNIQUEID}`;
+		} else if (missingDoc === "left") {
+			errorDetail = `Left non-production part - L:${data.LEFTUNIQUEID}`;
+		} else {
+			errorDetail = `Right non-production part - R:${data.RIGHTUNIQUEID}`;
+		}
 		await this.log(
 			{
 				action: "check",
@@ -429,8 +437,8 @@ class APILogger {
 				right_id: data.RIGHTID,
 				right_unique_id: data.RIGHTUNIQUEID,
 				status_code: 0,
-				message: "ALT_PART_NOT_FOUND",
-				error_detail: `Left: ${data.LEFTID}, Right: ${data.RIGHTID}`,
+				message: "NON_PRODUCTION_PART",
+				error_detail: errorDetail,
 			},
 			trx,
 		);

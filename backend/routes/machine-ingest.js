@@ -9,6 +9,64 @@ const swps_enabled = process.env.SWPS_ENABLED === "true";
 const swps_endpoint = process.env.SWPS_ENDPOINT;
 const axios = require("axios");
 
+async function getPart(trx, uniqueId, itemId) {
+	return trx("dbo.wms_v_raw_material_labels")
+		.where({
+			code: uniqueId,
+			item_code: itemId,
+		})
+		.whereNull("deleted_at")
+		.first();
+}
+
+async function getDocCode(trx, itemCode, uniqueId) {
+	const splscn = await trx("dbo.wms_v_splscn")
+		.where({
+			SPLSCN_ITMCD: itemCode,
+			SPLSCN_UNQCODE: uniqueId,
+		})
+		.orderBy("SPLSCN_LUPDT", "asc")
+		.first();
+
+	if (splscn) {
+		return {
+			doc: splscn.SPLSCN_DOC,
+		};
+	}
+
+	const c3lc = await trx("dbo.wms_v_c3lc")
+		.where({
+			C3LC_ITMCD: itemCode,
+			C3LC_NEWID: uniqueId,
+		})
+		.first();
+
+	if (c3lc) {
+		return {
+			doc: c3lc.C3LC_DOC,
+		};
+	}
+
+	return null;
+}
+
+async function getTlwsByDoc(trx, doc) {
+	return trx("dbo.WMS_TLWS")
+		.where("TLWS_PSNNO", doc)
+		.orderBy("TLWS_LUPDT", "asc")
+		.first();
+}
+
+async function getPartByPartNumber(trx, partNumber) {
+	return trx("dbo.part_list").where("part_number", partNumber).first();
+}
+
+async function getLibraryByPartName(trx, partName) {
+	if (!partName) return null;
+
+	return trx("dbo.part_library").where("part_name", partName).first();
+}
+
 async function sendAlert(line, spid, no, status = "active") {
 	if (!cmas_enabled) {
 		return;
@@ -200,21 +258,10 @@ async function handleCheck(req, res) {
 				};
 			}
 
-			const leftUniquePart = await trx("dbo.wms_v_raw_material_labels")
-				.where({
-					code: LEFTUNIQUEID,
-					item_code: LEFTID,
-				})
-				.whereNull("deleted_at")
-				.first();
-
-			const rightUniquePart = await trx("dbo.wms_v_raw_material_labels")
-				.where({
-					code: RIGHTUNIQUEID,
-					item_code: RIGHTID,
-				})
-				.whereNull("deleted_at")
-				.first();
+			const [leftUniquePart, rightUniquePart] = await Promise.all([
+				getPart(trx, LEFTUNIQUEID, LEFTID),
+				getPart(trx, RIGHTUNIQUEID, RIGHTID),
+			]);
 
 			if (!leftUniquePart || !rightUniquePart) {
 				const missingType =
@@ -226,44 +273,23 @@ async function handleCheck(req, res) {
 
 				await APILogger.logPartDeleted(req.body, missingType, trx);
 
-				if (!leftUniquePart && !rightUniquePart) {
-					return {
-						code: 0,
-						message: `\nPART WAS DELETED\nL:${LEFTUNIQUEID} | R:${RIGHTUNIQUEID}`,
-						data: "",
-					};
-				}
-				if (!leftUniquePart) {
-					return {
-						code: 0,
-						message: `\nLEFT PART WAS DELETED: ${LEFTUNIQUEID}`,
-						data: "",
-					};
-				}
-				if (!rightUniquePart) {
-					return {
-						code: 0,
-						message: `\nRIGHT PART WAS DELETED: ${RIGHTUNIQUEID}`,
-						data: "",
-					};
-				}
+				const messages = {
+					both: `\nPART WAS DELETED\nL:${LEFTUNIQUEID} | R:${RIGHTUNIQUEID}`,
+					left: `\nLEFT PART WAS DELETED\n${LEFTUNIQUEID}`,
+					right: `\nRIGHT PART WAS DELETED\n${RIGHTUNIQUEID}`,
+				};
+
+				return {
+					code: 0,
+					message: messages[missingType],
+					data: "",
+				};
 			}
 
-			const leftDocCode = await trx("dbo.wms_v_splscn")
-				.where({
-					SPLSCN_ITMCD: LEFTID,
-					SPLSCN_UNQCODE: LEFTUNIQUEID,
-				})
-				.orderBy("SPLSCN_LUPDT", "asc")
-				.first();
-
-			const rightDocCode = await trx("dbo.wms_v_splscn")
-				.where({
-					SPLSCN_ITMCD: RIGHTID,
-					SPLSCN_UNQCODE: RIGHTUNIQUEID,
-				})
-				.orderBy("SPLSCN_LUPDT", "asc")
-				.first();
+			const [leftDocCode, rightDocCode] = await Promise.all([
+				getDocCode(trx, LEFTID, LEFTUNIQUEID),
+				getDocCode(trx, RIGHTID, RIGHTUNIQUEID),
+			]);
 
 			if (!leftDocCode || !rightDocCode) {
 				const missingType =
@@ -275,40 +301,30 @@ async function handleCheck(req, res) {
 
 				await APILogger.logPSNMissing(req.body, missingType, trx);
 
-				if (!leftDocCode && !rightDocCode) {
-					return {
-						code: 0,
-						message: `\nPSN BOTH MISSING\nL:${LEFTID} | R:${RIGHTID}`,
-						data: "",
-					};
-				}
-				if (!leftDocCode) {
-					return {
-						code: 0,
-						message: `\nLEFT PSN MISSING: ${LEFTID}`,
-						data: "",
-					};
-				}
-				if (!rightDocCode) {
-					return {
-						code: 0,
-						message: `\nRIGHT PSN MISSING: ${RIGHTID}`,
-						data: "",
-					};
-				}
+				const messages = {
+					both: `\nPSN BOTH MISSING\nL:${LEFTID} | R:${RIGHTID}`,
+					left: `\nLEFT PSN MISSING\n${LEFTID}`,
+					right: `\nRIGHT PSN MISSING\n${RIGHTID}`,
+				};
+
+				return {
+					code: 0,
+					message: messages[missingType],
+					data: "",
+				};
 			}
 
-			if (leftDocCode.SPLSCN_DOC !== rightDocCode.SPLSCN_DOC) {
+			if (leftDocCode.doc !== rightDocCode.doc) {
 				await APILogger.logPSNDifferent(
 					req.body,
-					leftDocCode.SPLSCN_DOC,
-					rightDocCode.SPLSCN_DOC,
+					leftDocCode.doc,
+					rightDocCode.doc,
 					trx,
 				);
 
 				return {
 					code: 0,
-					message: `\nPSN ARE DIFFERENT\nL DOC:${leftDocCode.SPLSCN_DOC} |\nR DOC:${rightDocCode.SPLSCN_DOC}`,
+					message: `\nPSN ARE DIFFERENT\nL DOC:${leftDocCode.doc} |\nR DOC:${rightDocCode.doc}`,
 					data: "",
 				};
 			}
@@ -317,25 +333,40 @@ async function handleCheck(req, res) {
 			let isCommon = false;
 			let isSA = false;
 
-			if (LEFTID != RIGHTID) {
-				const tlws = await trx("dbo.WMS_TLWS")
-					.where("TLWS_PSNNO", rightDocCode.SPLSCN_DOC)
-					.orderBy("TLWS_LUPDT", "asc")
-					.first();
-				if (!tlws) {
-					await APILogger.logAltPartNotFound(req.body, trx);
-					return {
-						code: 0,
-						message: `\nALTERNATIVE PART NOT FOUND\nFOR PART:${LEFTID} & ${RIGHTID}`,
-						data: "",
-					};
-				}
+			const [leftTlws, rightTlws] = await Promise.all([
+				getTlwsByDoc(trx, leftDocCode.doc),
+				getTlwsByDoc(trx, rightDocCode.doc),
+			]);
 
-				const line = tlws.TLWS_LINENO;
-				const spid = tlws.TLWS_SPID;
+			if (!leftTlws || !rightTlws) {
+				const missingType =
+					!leftTlws && !rightTlws
+						? "both"
+						: !leftTlws
+							? "left"
+							: "right";
+
+				await APILogger.logAltPartNotFound(req.body, missingType, trx);
+
+				const messages = {
+					both: `\nNON-PRODUCTION PART\nL:${LEFTUNIQUEID} | R:${RIGHTUNIQUEID}`,
+					left: `\nLEFT NON-PRODUCTION PART\n${LEFTUNIQUEID}`,
+					right: `\nRIGHT NON-PRODUCTION PART\n${RIGHTUNIQUEID}`,
+				};
+
+				return {
+					code: 0,
+					message: messages[missingType],
+					data: "",
+				};
+			}
+
+			if (LEFTID != RIGHTID) {
+				const line = rightTlws.TLWS_LINENO;
+				const spid = rightTlws.TLWS_SPID;
 				const no = DEVICENAME;
 
-				const rawAssyNo = tlws.TLWS_MDLCD;
+				const rawAssyNo = rightTlws.TLWS_MDLCD;
 				const assyNo = rawAssyNo.slice(0, 7) + "-" + rawAssyNo.slice(7);
 
 				const checkCommonPart = await trx("dbo.ENG_COMM_SUB_PART")
@@ -407,15 +438,10 @@ async function handleCheck(req, res) {
 				}
 			}
 
-			const leftPart = await trx("dbo.part_list")
-				.select("*")
-				.where("part_number", LEFTID)
-				.first();
-
-			const rightPart = await trx("dbo.part_list")
-				.select("*")
-				.where("part_number", RIGHTID)
-				.first();
+			const [leftPart, rightPart] = await Promise.all([
+				getPartByPartNumber(trx, LEFTID),
+				getPartByPartNumber(trx, RIGHTID),
+			]);
 
 			if (!leftPart || !rightPart) {
 				const missingType =
@@ -427,44 +453,23 @@ async function handleCheck(req, res) {
 
 				await APILogger.logPartNotFound(req.body, missingType, trx);
 
-				if (!leftPart && !rightPart) {
-					return {
-						code: 0,
-						message: `\nPART NUMBERS NOT FOUND\nL:${LEFTID} | R:${RIGHTID}`,
-						data: "",
-					};
-				} else if (!leftPart) {
-					return {
-						code: 0,
-						message: `\nPART NUMBER NOT FOUND\nL:${LEFTID}`,
-						data: "",
-					};
-				} else {
-					return {
-						code: 0,
-						message: `\nPART NUMBER NOT FOUND\nR:${RIGHTID}`,
-						data: "",
-					};
-				}
+				const messages = {
+					both: `\nPART NUMBERS NOT FOUND\nL:${LEFTID} | R:${RIGHTID}`,
+					left: `\nPART NUMBER NOT FOUND\nL:${LEFTID}`,
+					right: `\nPART NUMBER NOT FOUND\nR:${RIGHTID}`,
+				};
+
+				return {
+					code: 0,
+					message: messages[missingType],
+					data: "",
+				};
 			}
 
-			const checkLibraryComplete = (library) => {
-				return !!(
-					library.component_type &&
-					library.component_size &&
-					library.reel_width
-				);
-			};
-
-			const leftLibrary = await trx("dbo.part_library")
-				.select("*")
-				.where("part_name", leftPart.part_name)
-				.first();
-
-			const rightLibrary = await trx("dbo.part_library")
-				.select("*")
-				.where("part_name", rightPart.part_name)
-				.first();
+			const [leftLibrary, rightLibrary] = await Promise.all([
+				getLibraryByPartName(trx, leftPart?.part_name),
+				getLibraryByPartName(trx, rightPart?.part_name),
+			]);
 
 			if (!leftLibrary || !rightLibrary) {
 				const missingType =
@@ -481,26 +486,26 @@ async function handleCheck(req, res) {
 					trx,
 				);
 
-				if (!leftLibrary && !rightLibrary) {
-					return {
-						code: 0,
-						message: `\nPARTS LIBRARY NOT FOUND\nL:${leftPart.part_name} | R:${rightPart.part_name}`,
-						data: "",
-					};
-				} else if (!leftLibrary) {
-					return {
-						code: 0,
-						message: `\nPARTS LIBRARY NOT FOUND\nL:${leftPart.part_name}`,
-						data: "",
-					};
-				} else {
-					return {
-						code: 0,
-						message: `\nPARTS LIBRARY NOT FOUND\nR:${rightPart.part_name}`,
-						data: "",
-					};
-				}
+				const messages = {
+					both: `\nPARTS LIBRARY NOT FOUND\nL:${leftPart.part_name} | R:${rightPart.part_name}`,
+					left: `\nPARTS LIBRARY NOT FOUND\nL:${leftPart.part_name}`,
+					right: `\nPARTS LIBRARY NOT FOUND\nR:${rightPart.part_name}`,
+				};
+
+				return {
+					code: 0,
+					message: messages[missingType],
+					data: "",
+				};
 			}
+
+			const checkLibraryComplete = (library) => {
+				return !!(
+					library.component_type &&
+					library.component_size &&
+					library.reel_width
+				);
+			};
 
 			const leftComplete = checkLibraryComplete(leftLibrary);
 			const rightComplete = checkLibraryComplete(rightLibrary);
@@ -520,25 +525,17 @@ async function handleCheck(req, res) {
 					trx,
 				);
 
-				if (!leftComplete && !rightComplete) {
-					return {
-						code: 0,
-						message: `\nPARTS LIBRARY INCOMPLETE\nL:${leftPart.part_name} | R:${rightPart.part_name}`,
-						data: "",
-					};
-				} else if (!leftComplete) {
-					return {
-						code: 0,
-						message: `\nPARTS LIBRARY INCOMPLETE\nL:${leftPart.part_name}`,
-						data: "",
-					};
-				} else {
-					return {
-						code: 0,
-						message: `\nPARTS LIBRARY INCOMPLETE\nR:${rightPart.part_name}`,
-						data: "",
-					};
-				}
+				const messages = {
+					both: `\nPARTS LIBRARY INCOMPLETE\nL:${leftPart.part_name} | R:${rightPart.part_name}`,
+					left: `\nPARTS LIBRARY INCOMPLETE\nL:${leftPart.part_name}`,
+					right: `\nPARTS LIBRARY INCOMPLETE\nR:${rightPart.part_name}`,
+				};
+
+				return {
+					code: 0,
+					message: messages[incompleteType],
+					data: "",
+				};
 			}
 
 			if (
@@ -659,25 +656,17 @@ async function handleCheck(req, res) {
 					trx,
 				);
 
-				if (leftInvalid && rightInvalid) {
-					return {
-						code: 0,
-						message: `\nVALUE/TOLERANCE NOT FOUND FOR CAP/RES PART\nL:${LEFTID} | R:${RIGHTID}`,
-						data: "",
-					};
-				} else if (leftInvalid) {
-					return {
-						code: 0,
-						message: `\nVALUE/TOLERANCE NOT FOUND FOR CAP/RES PART\nL:${LEFTID}`,
-						data: "",
-					};
-				} else {
-					return {
-						code: 0,
-						message: `\nVALUE/TOLERANCE NOT FOUND FOR CAP/RES PART\nR:${RIGHTID}`,
-						data: "",
-					};
-				}
+				const messages = {
+					both: `\nVALUE/TOLERANCE NOT FOUND FOR CAP/RES PART\nL:${LEFTID} | R:${RIGHTID}`,
+					left: `\nVALUE/TOLERANCE NOT FOUND FOR CAP/RES PART\nL:${LEFTID}`,
+					right: `\nVALUE/TOLERANCE NOT FOUND FOR CAP/RES PART\nR:${RIGHTID}`,
+				};
+
+				return {
+					code: 0,
+					message: messages[missingType],
+					data: "",
+				};
 			}
 
 			const checkSize = await trx("dbo.component_size")
@@ -754,25 +743,15 @@ async function handleSave(req, res) {
 
 	try {
 		await knex.transaction(async (trx) => {
-			const leftPart = await trx("dbo.part_list")
-				.select("*")
-				.where("part_number", LEFTID)
-				.first();
+			const [leftPart, rightPart] = await Promise.all([
+				getPartByPartNumber(trx, LEFTID),
+				getPartByPartNumber(trx, RIGHTID),
+			]);
 
-			const rightPart = await trx("dbo.part_list")
-				.select("*")
-				.where("part_number", RIGHTID)
-				.first();
-
-			const leftLibrary = await trx("dbo.part_library")
-				.select("*")
-				.where("part_name", leftPart.part_name)
-				.first();
-
-			const rightLibrary = await trx("dbo.part_library")
-				.select("*")
-				.where("part_name", rightPart.part_name)
-				.first();
+			const [leftLibrary, rightLibrary] = await Promise.all([
+				getLibraryByPartName(trx, leftPart?.part_name),
+				getLibraryByPartName(trx, rightPart?.part_name),
+			]);
 
 			const leftHasBM = leftPart?.specification?.startsWith("BM");
 			const rightHasBM = rightPart?.specification?.startsWith("BM");
@@ -816,39 +795,19 @@ async function handleSave(req, res) {
 				result: finalResult,
 			});
 
-			const leftUniquePart = await trx("dbo.wms_v_raw_material_labels")
-				.where({
-					code: LEFTUNIQUEID,
-					item_code: LEFTID,
-				})
-				.whereNull("deleted_at")
-				.first();
-
-			const rightUniquePart = await trx("dbo.wms_v_raw_material_labels")
-				.where({
-					code: RIGHTUNIQUEID,
-					item_code: RIGHTID,
-				})
-				.whereNull("deleted_at")
-				.first();
+			const [leftUniquePart, rightUniquePart] = await Promise.all([
+				getPart(trx, LEFTUNIQUEID, LEFTID),
+				getPart(trx, RIGHTUNIQUEID, RIGHTID),
+			]);
 
 			const leftLotNumber = leftUniquePart.lot_code;
 			const rightLotNumber = rightUniquePart.lot_code;
 			const leftQty = leftUniquePart.quantity;
 			const rightQty = rightUniquePart.quantity;
 
-			const rightDocCode = await trx("dbo.wms_v_splscn")
-				.where({
-					SPLSCN_ITMCD: RIGHTID,
-					SPLSCN_UNQCODE: RIGHTUNIQUEID,
-				})
-				.orderBy("SPLSCN_LUPDT", "asc")
-				.first();
+			const rightDocCode = await getDocCode(trx, RIGHTID, RIGHTUNIQUEID);
 
-			const tlws = await trx("dbo.WMS_TLWS")
-				.where("TLWS_PSNNO", rightDocCode.SPLSCN_DOC)
-				.orderBy("TLWS_LUPDT", "asc")
-				.first();
+			const tlws = await getTlwsByDoc(trx, rightDocCode.doc);
 
 			const woNo = tlws.TLWS_WONO;
 			const proc = tlws.TLWS_PROCD;
