@@ -11,6 +11,7 @@ const partListRouter = require("./part-list");
 const componentRouter = require("./component");
 const dashboardRouter = require("./dashboard");
 const handyRouter = require("./handy-replicate");
+const partDetailRouter = require("./part-detail");
 
 router.use("/psi-aspm/machine/interface", machineRouter);
 router.use("/psi-aspm/upload", uploadRouter);
@@ -22,5 +23,6 @@ router.use("/psi-aspm/part-list", partListRouter);
 router.use("/psi-aspm/component", componentRouter);
 router.use("/psi-aspm/dashboard", dashboardRouter);
 router.use("/psi-aspm/handy-replicate", handyRouter);
+router.use("/psi-aspm/part-detail", partDetailRouter);
 
 module.exports = router;

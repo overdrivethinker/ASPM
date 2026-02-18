@@ -220,32 +220,17 @@ async function handleCheck(req, res) {
 					trx,
 				);
 
-				if (
-					LEFTUNIQUEID?.length !== 16 &&
-					RIGHTUNIQUEID?.length !== 16
-				) {
-					return {
-						code: 0,
-						message: `\nINVALID UNIQUE CODE\nL:${LEFTUNIQUEID} | R:${RIGHTUNIQUEID}`,
-						data: "",
-					};
-				}
+				const messages = {
+					both: `\nINVALID UNIQUE CODE\nL:${LEFTUNIQUEID} | R:${RIGHTUNIQUEID}`,
+					left: `\nLEFT UNIQUE CODE INVALID: ${LEFTUNIQUEID}`,
+					right: `\nRIGHT UNIQUE CODE INVALID: ${RIGHTUNIQUEID}`,
+				};
 
-				if (LEFTUNIQUEID?.length !== 16) {
-					return {
-						code: 0,
-						message: `\nLEFT UNIQUE CODE INVALID: ${LEFTUNIQUEID}`,
-						data: "",
-					};
-				}
-
-				if (RIGHTUNIQUEID?.length !== 16) {
-					return {
-						code: 0,
-						message: `\nRIGHT UNIQUE CODE INVALID: ${RIGHTUNIQUEID}`,
-						data: "",
-					};
-				}
+				return {
+					code: 0,
+					message: messages[invalidType],
+					data: "",
+				};
 			}
 
 			if (LEFTUNIQUEID == RIGHTUNIQUEID) {
