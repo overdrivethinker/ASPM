@@ -67,6 +67,15 @@ async function getLibraryByPartName(trx, partName) {
 	return trx("dbo.part_library").where("part_name", partName).first();
 }
 
+async function getFeederList(trx, itemCode, uniqueId) {
+	return trx("dbo.wms_v_swps")
+		.where({
+			SWPS_ITMCD: itemCode,
+			SWPS_UNQ: uniqueId,
+		})
+		.first();
+}
+
 async function sendAlert(line, spid, no, status = "active") {
 	if (!cmas_enabled) {
 		return;
@@ -88,7 +97,7 @@ async function storeSWPS({
 	woNo,
 	proc,
 	lineName,
-	mcMcZItm,
+	mcMczItm,
 	RIGHTID,
 	rightLotNumber,
 	LEFTID,
@@ -107,6 +116,7 @@ async function storeSWPS({
 	mainItmCd,
 	USERID,
 	finalResult,
+	judge,
 }) {
 	if (!swps_enabled) {
 		return;
@@ -117,7 +127,7 @@ async function storeSWPS({
 			SWPS_WONO: woNo,
 			SWPS_PROCD: proc,
 			SWPS_LINENO: lineName,
-			SWPS_MCMCZITM: mcMcZItm,
+			SWPS_MCMCZITM: mcMczItm,
 			SWPS_ITMCD: RIGHTID,
 			SWPS_LOTNO: rightLotNumber,
 			SWPS_NITMCD: LEFTID,
@@ -138,6 +148,7 @@ async function storeSWPS({
 			SWPS_MDLCD: rawAssyNo,
 			SWPS_BOMRV: bomRev,
 			SWPS_MAINITMCD: mainItmCd,
+			SWPS_JUDGE: judge,
 		});
 	} catch (error) {
 		console.error("Failed to store SWPS:", error.message);
@@ -146,6 +157,32 @@ async function storeSWPS({
 
 router.get("/", (req, res) => {
 	res.send("CONNECTED TO PSI-ASPM API INTERFACE");
+});
+
+router.post("/test", async (req, res) => {
+	const { RIGHTID, RIGHTUNIQUEID } = req.body;
+
+	try {
+		const result = await knex.transaction(async (trx) => {
+			const feederList = await getFeederList(trx, RIGHTID, RIGHTUNIQUEID);
+			return {
+				machineItem: feederList.SWPS_MCMCZITM.trim(),
+				machineCode: feederList.SWPS_MC,
+				machineZone: feederList.SWPS_MCZ,
+				mainItemCode: feederList.SWPS_MAINITMCD,
+			};
+		});
+		return res.json({
+			code: 1,
+			message: "SUCCESS",
+			data: result,
+		});
+	} catch (err) {
+		return res.status(500).json({
+			code: 0,
+			message: err.message,
+		});
+	}
 });
 
 router.post("/", async (req, res) => {
@@ -794,6 +831,8 @@ async function handleSave(req, res) {
 
 			const tlws = await getTlwsByDoc(trx, rightDocCode.doc);
 
+			const feederList = await getFeederList(trx, RIGHTID, RIGHTUNIQUEID);
+
 			const woNo = tlws.TLWS_WONO;
 			const proc = tlws.TLWS_PROCD;
 			const lineName = tlws.TLWS_LINENO;
@@ -803,16 +842,18 @@ async function handleSave(req, res) {
 			const rawAssyNo = tlws.TLWS_MDLCD;
 			const bomRev = tlws.TLWS_BOMRV;
 
-			const machineItem = "YOUNGPOOL GAK PAKE FL";
-			const machineCode = "YOUNGPOOL GAK PAKE FL";
-			const machineZone = "YOUNGPOOL GAK PAKE FL";
-			const mainItemCode = "YOUNGPOOL GAK PAKE FL";
+			const mcMczItm = feederList?.SWPS_MCMCZITM ?? null;
+			const mc = feederList?.SWPS_MC ?? null;
+			const mcz = feederList?.SWPS_MCZ ?? null;
+			const mainItmCd = feederList?.SWPS_MAINITMCD ?? null;
+
+			const judge = "YOUNGPOOOL";
 
 			await storeSWPS({
 				woNo,
 				proc,
 				lineName,
-				mcMcZItm: machineItem,
+				mcMczItm,
 				RIGHTID,
 				rightLotNumber,
 				LEFTID,
@@ -824,13 +865,14 @@ async function handleSave(req, res) {
 				psnNo,
 				jobNo,
 				spid,
-				mc: machineCode,
-				mcz: machineZone,
+				mc,
+				mcz,
 				rawAssyNo,
 				bomRev,
-				mainItmCd: mainItemCode,
+				mainItmCd,
 				USERID,
 				finalResult,
+				judge,
 			});
 
 			await APILogger.logSaveSuccess(req.body, finalResult, trx);
