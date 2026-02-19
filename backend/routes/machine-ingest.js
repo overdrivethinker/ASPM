@@ -159,32 +159,6 @@ router.get("/", (req, res) => {
 	res.send("CONNECTED TO PSI-ASPM API INTERFACE");
 });
 
-router.post("/test", async (req, res) => {
-	const { RIGHTID, RIGHTUNIQUEID } = req.body;
-
-	try {
-		const result = await knex.transaction(async (trx) => {
-			const feederList = await getFeederList(trx, RIGHTID, RIGHTUNIQUEID);
-			return {
-				machineItem: feederList.SWPS_MCMCZITM.trim(),
-				machineCode: feederList.SWPS_MC,
-				machineZone: feederList.SWPS_MCZ,
-				mainItemCode: feederList.SWPS_MAINITMCD,
-			};
-		});
-		return res.json({
-			code: 1,
-			message: "SUCCESS",
-			data: result,
-		});
-	} catch (err) {
-		return res.status(500).json({
-			code: 0,
-			message: err.message,
-		});
-	}
-});
-
 router.post("/", async (req, res) => {
 	try {
 		const { action } = req.body;
@@ -687,23 +661,6 @@ async function handleCheck(req, res) {
 				return {
 					code: 0,
 					message: messages[missingType],
-					data: "",
-				};
-			}
-
-			const checkSize = await trx("dbo.component_size")
-				.where("metric_code", leftLibrary.component_size)
-				.first();
-
-			if (!checkSize) {
-				await APILogger.logSizeNotFound(
-					req.body,
-					leftLibrary.component_size,
-					trx,
-				);
-				return {
-					code: 0,
-					message: `COMPONENT SIZE NOT FOUND: ${leftLibrary.component_size}`,
 					data: "",
 				};
 			}
