@@ -805,7 +805,7 @@ async function handleSave(req, res) {
 			const mcz = feederList?.SWPS_MCZ ?? null;
 			const mainItmCd = feederList?.SWPS_MAINITMCD ?? null;
 
-			const judge = "YOUNGPOOOL";
+			const judge = "YOUNGPOOL";
 
 			await storeSWPS({
 				woNo,
