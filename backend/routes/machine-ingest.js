@@ -784,11 +784,12 @@ async function handleSave(req, res) {
 			const leftQty = leftUniquePart.quantity;
 			const rightQty = rightUniquePart.quantity;
 
-			const rightDocCode = await getDocCode(trx, RIGHTID, RIGHTUNIQUEID);
+			const [rightDocCode, feederList] = await Promise.all([
+				getDocCode(trx, RIGHTID, RIGHTUNIQUEID),
+				getFeederList(trx, RIGHTID, RIGHTUNIQUEID),
+			]);
 
 			const tlws = await getTlwsByDoc(trx, rightDocCode.doc);
-
-			const feederList = await getFeederList(trx, RIGHTID, RIGHTUNIQUEID);
 
 			const woNo = tlws.TLWS_WONO;
 			const proc = tlws.TLWS_PROCD;
