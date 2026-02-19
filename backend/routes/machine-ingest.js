@@ -68,12 +68,39 @@ async function getLibraryByPartName(trx, partName) {
 }
 
 async function getFeederList(trx, itemCode, uniqueId) {
-	return trx("dbo.wms_v_swps")
+	const swps = await trx("dbo.wms_v_swps")
 		.where({
 			SWPS_ITMCD: itemCode,
 			SWPS_UNQ: uniqueId,
 		})
 		.first();
+
+	if (swps) {
+		return {
+			mcMczItm: swps.SWPS_MCMCZITM,
+			mc: swps.SWPS_MC,
+			mcz: swps.SWPS_MCZ,
+			mainItmCd: swps.SWPS_MAINITMCD,
+		};
+	}
+
+	const swmp = await trx("dbo.wms_v_swmp")
+		.where({
+			SWMP_ITMCD: itemCode,
+			SWMP_UNQ: uniqueId,
+		})
+		.first();
+
+	if (swmp) {
+		return {
+			mcMczItm: swmp.SWMP_MCMCZITM,
+			mc: swmp.SWMP_MC,
+			mcz: swmp.SWMP_MCZ,
+			mainItmCd: swmp.SWMP_MAINITMCD,
+		};
+	}
+
+	return null;
 }
 
 async function sendAlert(line, spid, no, status = "active") {
@@ -792,10 +819,10 @@ async function handleSave(req, res) {
 			const rawAssyNo = tlws.TLWS_MDLCD;
 			const bomRev = tlws.TLWS_BOMRV;
 
-			const mcMczItm = feederList?.SWPS_MCMCZITM ?? null;
-			const mc = feederList?.SWPS_MC ?? null;
-			const mcz = feederList?.SWPS_MCZ ?? null;
-			const mainItmCd = feederList?.SWPS_MAINITMCD ?? null;
+			const mcMczItm = feederList.mcMczItm;
+			const mc = feederList.mc;
+			const mcz = feederList.mcz;
+			const mainItmCd = feederList.mainItmCd;
 
 			const judge = "YOUNGPOOL";
 			const mappedFinalResult = finalResult === "PASS" ? "OK" : "NG";
