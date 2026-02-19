@@ -384,17 +384,13 @@ async function handleCheck(req, res) {
 
 				if (!checkCommonPart) {
 					await APILogger.logPartNotCommon(req.body, trx);
-
 					await sendAlert(line, spid, no, "active");
-
 					return {
 						code: 0,
 						message: `\nPARTS NOT COMMON OR SUBSTITUTE\nL:${LEFTID} | R:${RIGHTID}\nFOR ASSY NO:${assyNo}`,
 						data: "",
 					};
 				}
-
-				isCommon = true;
 
 				const checkSAParts = await trx("dbo.wms_v_mitmsa")
 					.where("MITMSA_MDLCD", rawAssyNo)
@@ -415,9 +411,7 @@ async function handleCheck(req, res) {
 
 				if (!checkSAParts) {
 					await APILogger.logPartNotSA(req.body, trx);
-
 					await sendAlert(line, spid, no, "active");
-
 					return {
 						code: 0,
 						message: `\nPARTS NOT SA\nL:${LEFTID} | R:${RIGHTID}\nFOR ASSY NO:${assyNo}`,
@@ -425,11 +419,9 @@ async function handleCheck(req, res) {
 					};
 				}
 
-				isSA = true;
-
-				if (isSA) {
+				if (checkSAParts) {
 					componentType = "SA PARTS";
-				} else if (isCommon) {
+				} else {
 					componentType = `${checkCommonPart.TYPE} PARTS`;
 				}
 			}
@@ -806,6 +798,7 @@ async function handleSave(req, res) {
 			const mainItmCd = feederList?.SWPS_MAINITMCD ?? null;
 
 			const judge = "YOUNGPOOL";
+			const mappedFinalResult = finalResult === "PASS" ? "OK" : "NG";
 
 			await storeSWPS({
 				woNo,
@@ -829,7 +822,7 @@ async function handleSave(req, res) {
 				bomRev,
 				mainItmCd,
 				USERID,
-				finalResult,
+				finalResult: mappedFinalResult,
 				judge,
 			});
 
