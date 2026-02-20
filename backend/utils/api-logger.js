@@ -498,6 +498,24 @@ class APILogger {
 		);
 	}
 
+	static async logFeederListNotFound(data, trx = null) {
+		await this.log(
+			{
+				action: "check",
+				user_id: data.USERID,
+				device_name: data.DEVICENAME,
+				left_id: data.LEFTID,
+				left_unique_id: data.LEFTUNIQUEID,
+				right_id: data.RIGHTID,
+				right_unique_id: data.RIGHTUNIQUEID,
+				status_code: 0,
+				message: "FEEDER_LIST_NOT_FOUND",
+				error_detail: `Part ${data.RIGHTUNIQUEID} not in feeder list`,
+			},
+			trx,
+		);
+	}
+
 	static async logInvalidUniqueCode(data, invalidParts, trx = null) {
 		let errorDetail = "";
 		if (invalidParts === "both") {

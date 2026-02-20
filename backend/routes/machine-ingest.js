@@ -53,7 +53,7 @@ async function getDocCode(trx, itemCode, uniqueId) {
 async function getTlwsByDoc(trx, doc) {
 	return trx("dbo.WMS_TLWS")
 		.where("TLWS_PSNNO", doc)
-		.orderBy("TLWS_LUPDT", "asc")
+		.andWhere("TLWS_STSFG", "ACT")
 		.first();
 }
 
@@ -178,7 +178,9 @@ async function storeSWPS({
 			SWPS_JUDGE: judge,
 		});
 	} catch (error) {
-		console.error("Failed to store SWPS:", error.message);
+		throw new Error(
+			`\nFAILED TO SAVE TRACEABILITY DATA:\n${error.message}`,
+		);
 	}
 }
 
@@ -352,9 +354,18 @@ async function handleCheck(req, res) {
 				};
 			}
 
+			const feederList = await getFeederList(trx, RIGHTID, RIGHTUNIQUEID);
+
+			if (!feederList) {
+				await APILogger.logFeederListNotFound(req.body, trx);
+				return {
+					code: 0,
+					message: "\nFEEDER LIST DATA NOT FOUND",
+					data: "",
+				};
+			}
+
 			let componentType = "NORMAL PARTS";
-			let isCommon = false;
-			let isSA = false;
 
 			const [leftTlws, rightTlws] = await Promise.all([
 				getTlwsByDoc(trx, leftDocCode.doc),
