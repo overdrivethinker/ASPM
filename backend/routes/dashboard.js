@@ -230,8 +230,9 @@ router.get("/overview", async (req, res) => {
 router.get("/chart-data", async (req, res) => {
 	try {
 		const range = req.query.range || "90d";
-
 		const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
+
+		const windowSize = range === "7d" ? 2 : range === "30d" ? 5 : 7;
 
 		const records = await knex("LCR_records")
 			.select(
@@ -251,15 +252,69 @@ router.get("/chart-data", async (req, res) => {
 			.groupBy(knex.raw("CAST([timestamp] AS DATE)"))
 			.orderBy("date", "asc");
 
-		const chartData = records.map((r) => ({
-			date: r.date,
-			pass: Number(r.pass) || 0,
-			fail: Number(r.fail) || 0,
-		}));
+		const dailyRate = records.map((r) => {
+			const pass = Number(r.pass) || 0;
+			const fail = Number(r.fail) || 0;
+			const total = pass + fail;
+			return {
+				date: r.date,
+				pass,
+				fail,
+				passRate:
+					total === 0 ? null : +((pass / total) * 100).toFixed(2),
+			};
+		});
+
+		const movingAvg = dailyRate.map((r, i) => {
+			const window = dailyRate.slice(
+				Math.max(0, i - (windowSize - 1)),
+				i + 1,
+			);
+			const validPoints = window.filter((x) => x.passRate !== null);
+
+			const avg =
+				validPoints.length === 0
+					? null
+					: +(
+							validPoints.reduce((s, x) => s + x.passRate, 0) /
+							validPoints.length
+						).toFixed(2);
+
+			return { ...r, mva: avg };
+		});
+
+		const validMva = movingAvg.filter((r) => r.mva !== null);
+		const firstMva = validMva.at(0)?.mva ?? 0;
+		const lastMva = validMva.at(-1)?.mva ?? 0;
+		const trendDiff = +(lastMva - firstMva).toFixed(2);
+
+		const totalPass = records.reduce((s, r) => s + Number(r.pass), 0);
+		const totalFail = records.reduce((s, r) => s + Number(r.fail), 0);
+		const totalAll = totalPass + totalFail;
+
+		const worstDay = dailyRate.reduce(
+			(worst, r) => (r.fail > (worst?.fail ?? -1) ? r : worst),
+			null,
+		);
+
+		const insights = {
+			overallPassRate:
+				totalAll === 0 ? 0 : +((totalPass / totalAll) * 100).toFixed(2),
+			trend: {
+				direction:
+					trendDiff > 1 ? "up" : trendDiff < -1 ? "down" : "stable",
+				value: +Math.abs(trendDiff).toFixed(2),
+			},
+			worstDay: worstDay
+				? { date: worstDay.date, failCount: worstDay.fail }
+				: null,
+			totalRecords: totalAll,
+		};
 
 		res.json({
 			success: true,
-			data: chartData,
+			data: movingAvg,
+			insights,
 		});
 	} catch (error) {
 		console.error("Error fetching chart data:", error);
